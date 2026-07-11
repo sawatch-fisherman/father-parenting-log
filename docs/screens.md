@@ -17,7 +17,7 @@
 |---|---|---|---|
 | S1 | ログイン画面 | Google SSOボタンのみ | ユーザー登録・ログイン |
 | S2 | プロフィール登録画面 | 初回ログイン時のみ。ニックネーム（必須）・年代／子どもの年齢帯（ともに任意） | プロフィール登録 |
-| S3 | 記録画面 | ヘッダー（左：ユーザーアイコン※Google SSOから取得・DBには保存しない／右：設定⚙→S7）＋常時8アイコン（**短タップ＝即記録**／**長押し＝S10で日時指定**）＋「その他」ボタン（→S4） | 育児イベント種別管理／育児イベント登録 |
+| S3 | 記録画面 | ヘッダー（ユーザーアイコン※Google SSOから取得・DBには保存しない。設定へはグローバルナビから遷移）＋常時8アイコン（**短タップ＝即記録**／**長押し＝S10で日時指定**）＋「その他」ボタン（→S4） | 育児イベント種別管理／育児イベント登録 |
 | S4 | 「その他」イベント選択画面 | ピン留めされていない残りの候補一覧。項目をタップすると**常にS10（実施日時指定画面）を経由**する（瞬間記録は行わない。低頻度・後追い記録が多いため） | 育児イベント種別管理（その他ボタン） |
 | S5 | 称号獲得モーダル | 称号獲得時に記録画面（S3）上にオーバーレイ表示 | 称号獲得 |
 | S6 | X投稿文生成モーダル | 称号獲得モーダルから遷移。生成文のコピー・Xを開くリンク | X投稿文生成・コピー |
@@ -69,12 +69,10 @@ flowchart TD
     S13["S13 記録履歴画面（タイムライン）"] -->|"「・・・」"| S11
     S11["S11 ログ編集画面"] -->|"保存／削除"| S13
 
-    S3 -->|"設定アイコン"| S7
     S7["S7 設定画面（ハブ）"] -->|"プロフィール編集"| S8
     S7 -->|"ピン留め設定"| S9
     S8["S8 プロフィール編集画面"] -->|"保存"| S7
     S9["S9 ピン留め設定画面"] -->|"保存"| S7
-    S7 -->|"戻る"| S3
     S7 -->|"ログアウト"| S1
 
     GNAV(("グローバルナビ<br>（タブ／サイドバー）"))
@@ -106,7 +104,7 @@ flowchart TD
 | GET | `/auth/google/callback` | `auth.google.callback` | (S1の遷移先) | 認証コールバック。プロフィール未登録ならS2へ、登録済みならS3へリダイレクト |
 | GET | `/profile/register` | `profile.register` | S2 プロフィール登録画面 | 初回ログイン時のみ |
 | GET | `/` | `home` | S3 記録画面 | 認証済みユーザーのトップ。未認証は`/login`へリダイレクト |
-| GET | `/events/other` | `events.other` | S4 「その他」イベント選択画面 | ピン留めされていない候補一覧 |
+| GET | `/care-event-types/other` | `care-event-types.other` | S4 「その他」イベント選択画面 | ピン留めされていない候補一覧 |
 | GET | `/care-events/create` | `care-events.create` | S10 実施日時指定画面 | クエリで対象イベント種別を受け取る（例：`?care_event_type_id=`） |
 | GET | `/care-events/{care_event}/edit` | `care-events.edit` | S11 ログ編集画面 | S13の各行から遷移 |
 | GET | `/settings` | `settings.index` | S7 設定画面（ハブ） | |
@@ -120,7 +118,7 @@ flowchart TD
 | Method | URI | ルート名 | 用途 | 備考 |
 |---|---|---|---|---|
 | POST | `/profile` | `profile.store` | S2の登録処理 | 完了後`/`（S3）へリダイレクト |
-| POST | `/care-events` | `care-events.store` | 育児イベント記録 | S3短タップ／S10保存の共通エンドポイント。`occurred_at`省略時は`now()`（[decisions.md](decisions.md) §1.3） |
+| POST | `/care-events` | `care-events.store` | 育児イベント記録 | S3短タップ／S10保存の共通エンドポイント。クライアントは短タップ時もタップ時刻（ミリ秒精度）を`occurred_at`として送信する（省略時の`now()`は二重送信防止が効かないフォールバック。[decisions.md](decisions.md) §1.3） |
 | PATCH | `/care-events/{care_event}` | `care-events.update` | S11保存 | `occurred_at`のみ変更可 |
 | DELETE | `/care-events/{care_event}` | `care-events.destroy` | S11削除 | |
 | PATCH | `/settings/profile` | `settings.profile.update` | S8保存 | |
@@ -146,7 +144,7 @@ flowchart TD
 | S8 プロフィール編集画面 | GET `/settings/profile` | `ProfileController` | `edit()` | — | 同上 |
 | (S8の保存) | PATCH `/settings/profile` | `ProfileController` | `update()` | `ProfileRequest`（storeと共用） | 同上 |
 | S3 記録画面 | GET `/` | `RecordController` | `index()` | — | — |
-| S4 「その他」イベント選択画面 | GET `/events/other` | `CareEventTypeController` | `other()` | — | — |
+| S4 「その他」イベント選択画面 | GET `/care-event-types/other` | `CareEventTypeController` | `other()` | — | — |
 | S10 実施日時指定画面 | GET `/care-events/create` | `CareEventController` | `create()` | — | — |
 | (S3短タップ／S10保存) | POST `/care-events` | `CareEventController` | `store()` | `StoreCareEventRequest` | — |
 | S11 ログ編集画面 | GET `/care-events/{care_event}/edit` | `CareEventController` | `edit()` | — | `CareEventPolicy@update`（他人の記録IDを弾く） |

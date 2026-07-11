@@ -197,7 +197,8 @@ TotoOps定義のイベント種別とユーザーカスタムイベントを同�
 
 - `count`・`duration_minutes`・`hp_delta`は持たない（[decisions.md](decisions.md) §1.3・§1.6）。1回の行動＝1行で記録し、回数は`COUNT(*)`で数える。
 - 集計（累計実績・タイムライン・Phase 2の全体傾向）は`care_event_type_id`でグルーピングする。`care_event_types.name`は表示専用で、集計ロジックには登場しない。
-- 二重送信防止の`UNIQUE(user_id, care_event_type_id, occurred_at)`と合わせて、クライアント側は送信中の送信ボタンをdisableする（[decisions.md](decisions.md) §1.3）。
+- 二重送信防止の`UNIQUE(user_id, care_event_type_id, occurred_at)`を機能させるため、**短タップ（即時記録）でもクライアントがタップ時点のタイムスタンプ（ミリ秒精度）を`occurred_at`として必ず送信する**（サーバー採番の`now()`だとリクエストごとに値が変わり、同一操作のリトライ・二度発火を弾けない。`occurred_at`省略時の`now()`はフォールバックであり正規クライアントは使わない）。合わせてクライアント側は送信中の送信ボタンをdisableする（[decisions.md](decisions.md) §1.3）。
+- S10（実施日時指定画面）は分精度入力のため、既存記録と「種別×日時」が衝突した場合は「同じ日時に同じ記録があります」という分かりやすいバリデーションエラーを返す（同一分に同種イベントを2回記録したい場合は、1分ずらして登録する運用を許容する）。
 - **事後編集は`occurred_at`のみ許可**。`care_event_type_id`の変更は不可とし、種別を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_event_type_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。
 
 ---
