@@ -30,7 +30,7 @@ prompts/
 
 # =========================
 # Laravel / PHP
-# Laravel本体を src/ 配下に置く想定
+# Laravel譛ｬ菴薙ｒ src/ 驟堺ｸ九↓驟咲ｽｮ縺吶ｋ讒区��
 # =========================
 src/vendor/
 src/.phpunit.result.cache
