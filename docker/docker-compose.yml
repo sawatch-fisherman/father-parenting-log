@@ -5,6 +5,10 @@ services:
     build:
       context: ..
       dockerfile: docker/php/Dockerfile
+    environment:
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ../src:/var/www/html
     working_dir: /var/www/html

@@ -22,6 +22,10 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+COPY docker/php/xdebug.ini /usr/local/etc/php/conf.d/99-xdebug.ini
+
 ARG WWWUSER=1000
 ARG WWWGROUP=1000
 RUN groupadd -g ${WWWGROUP} app \
