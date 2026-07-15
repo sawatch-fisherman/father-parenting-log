@@ -42,6 +42,11 @@
 - [画面設計](docs/screens.md)
 - [データモデル / ER図](docs/data-model.md)
 - [個人情報・集計方針](docs/privacy.md)
+- [技術スタック](docs/tech-stack.md)
+
+## 開発者向け
+
+- [開発コマンド集](dev-commands.md)
 
 ## 開発名
 
