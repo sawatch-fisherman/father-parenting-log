@@ -10,10 +10,12 @@
 - **垂直スライス（縦切り）**：各マイルストーンは「DB → バックエンド → フロント → テスト」まで通しで完結させ、毎回“動いて見せられる”状態でマージする。レイヤーごと（全マイグレーション→全Controller→全Vue）の横切りにはしない。
 - **依存順に並べる（番号順 ≠ 依存順）**：features.md の機能一覧・screens.md の S1〜S13 は**トピック順・画面遷移順であって「作れる順」ではない**。ここでは実際の構築依存に従って並べ替える。
 - **基盤（M0）を先頭に固定**：features.md・screens.md には現れないが、8テーブル・Enum・Seeder といった土台（[decisions.md](decisions.md) §1.3）が全画面の前提になるため、最初に横切りで一括構築する（テーブル群が FK で相互に絡み分割しづらいため、ここだけは例外的に横切り）。
+- **多言語化の規律（全スライス共通）**：M0 で i18n 基盤（軽量版）を敷いた後は、**各スライスで画面の文字列を直書きせず `t('key')` 経由にし、対応するキーを `lang/ja/*` に追加する**（[decisions.md](decisions.md) §1.3）。英訳（`lang/en/*`）は未投入でよく、`fallback_locale = ja` で日本語表示になる（英訳時期は未決 #18）。
 - **各スライス共通の Definition of Done（DoD）**：
   - `composer check`（`pint` → `phpstan`(level 8) → `test`）が green
   - Feature テスト中心に happy / failure / edge を網羅（[src/CLAUDE.md](../src/CLAUDE.md) 準拠）
   - 対象画面が実際に遷移・操作できる（該当スライスの範囲で）
+  - 画面文字列が `t()` 経由になっており `lang/ja/*` にキーが揃っている
 - **作業単位**：1スライス＝1ブランチ／1PR を推奨。`src/` 配下のコーディング作法は [src/CLAUDE.md](../src/CLAUDE.md)（Laravel Boost 生成）に従う。
 
 ### 着手前提（環境）
@@ -28,7 +30,7 @@
 
 ```mermaid
 flowchart TD
-    M0["M0 基盤<br>(7テーブル/Enum/Model/Seeder)"] --> M1["M1 認証 (S1)"]
+    M0["M0 基盤<br>(7テーブル/Enum/Model/Seeder/i18n)"] --> M1["M1 認証 (S1)"]
     M1 --> M2["M2 プロフィール (S2,S8)<br>+ slot初期化"]
     M2 --> M3["M3 記録の骨格+ナビ (S3)"]
     M3 --> M4["M4 育児イベント登録 (S3,S4,S10)"]
@@ -58,12 +60,20 @@ flowchart TD
     - FK の `ON DELETE` 方針は data-model.md 各節に従う（`care_event_type_id`→`care_events` は CASCADE、`titles`/`user_titles` の `title_id` は RESTRICT 等）
     - **`personal_access_tokens` / Sanctum は作らない（後述「横断事項」の先送り方針）**
   - [ ] Model（`HasUlids`・リレーション・Enum cast）：`User` / `Profile` / `CareEventType` / `CareEvent` / `UserSlotConfig` / `Title` / `UserTitle`
-  - [ ] Seeder：`CareEventTypeSeeder`（`user_id IS NULL` の17行、`sort_order` 1〜17。候補プールは [features.md](features.md)「育児イベント種別一覧」）／`TitleSeeder`（**しきい値は未決 #4 → 暫定値＋`// TODO` で投入**）
-  - [ ] Factory（テスト用。各 Model）
-  - [ ] `config/totoops.php`：登録時に自動ピン留めする「初期おすすめ8個」（**未決 #11 → 暫定リスト＋TODO**。[decisions.md](decisions.md) §1.3）
-- **テスト観点**：`migrate:fresh --seed` 成功、`care_events` のユニーク制約が効く、Enum cast の往復。
-- **完了条件**：`migrate:fresh --seed` が通る／`composer check` green。
-- **ブロッカー**：未決 #4（称号しきい値）・#11（初期8個）は**暫定値で着手可**、確定後に差し替え。
+  - [ ] **`App\Support\CareEventTypeId`（固定ID定数クラス）**：TotoOps標準17行の固定ULID（`0STD0000000000000000001`〜`...017`）を名前付き定数（例：`DIAPER_CHANGE`）として定義（[decisions.md](decisions.md) §1.3「ID／主キーの UUID 化」例外規定、[data-model.md](data-model.md) ③）
+  - [ ] Seeder：`CareEventTypeSeeder`（`user_id IS NULL` の17行。**`CareEventTypeId` 定数で `id` を明示指定**して固定ULIDで作成。`sort_order` 1〜17。候補プールは [features.md](features.md)「育児イベント種別一覧」）／`TitleSeeder`（**Count・Streak 両方の `condition_type` を投入。対象種別は `CareEventTypeId` 定数で指定し `name` 文字列一致には依存しない。しきい値は未決 #4 → 暫定値＋`// TODO`**。[decisions.md](decisions.md) §1.3）
+  - [ ] Factory（テスト用。各 Model。`CareEventType` ファクトリはユーザーカスタム用途のため通常の `HasUlids` ランダム生成のまま）
+  - [ ] `config/totoops.php`：登録時に自動ピン留めする「初期おすすめ8個」を **`CareEventTypeId` 定数の配列**で指定（`name` ではなく固定IDを直接参照。**未決 #11 → 暫定リスト＋TODO**。[decisions.md](decisions.md) §1.3）
+  - [ ] **i18n 基盤（軽量版・依存追加なし。[decisions.md](decisions.md) §1.3）**：
+    - `config/app.php`・`.env.example`：`locale`/`fallback_locale` を `ja`、`faker_locale` を `ja_JP`（現状 `en`）
+    - `app/Http/Middleware/SetLocale.php`（cookie→`App::setLocale()`、web ミドルウェアグループに登録。既定 `ja`）
+    - `HandleInertiaRequests::share()` に `locale` と現ロケールのメッセージを共有
+    - `resources/js/composables/useTrans.ts`（`t(key, replacements?)`。共有 props を参照）
+    - `POST /locale`＋`LocaleController@update`（cookie セット＋リダイレクト。ルート名 `locale.update`）
+    - `lang/ja/`（`nav.php`・`validation.php` 等の骨組み。各画面のキーは以降のスライスで追加）
+- **テスト観点**：`migrate:fresh --seed` 成功、`care_events` のユニーク制約が効く、Enum cast の往復、`POST /locale` で cookie が変わり `App::getLocale()` が切り替わる。
+- **完了条件**：`migrate:fresh --seed` が通る／`composer check` green／ロケール切り替えが効く。
+- **ブロッカー**：未決 #4（称号しきい値）・#11（初期8個）は**暫定値で着手可**、確定後に差し替え。i18n は英訳未投入でも `fallback_locale = ja` で日本語表示になるため着手可（英訳時期は未決 #18）。
 
 ---
 
@@ -79,6 +89,7 @@ flowchart TD
   - [ ] callback：`provider` + `provider_id` で find/create（`UNIQUE(provider, provider_id)`）。**プロフィール未登録 → `profile.register`（S2）／登録済 → `home`（S3）へリダイレクト**
   - [ ] ミドルウェア：`guest`（S1）・`auth`（以降）
   - [ ] Vue：`Pages/Auth/Login.vue`（Google SSO ボタンのみ。[wireframes.md](wireframes.md) S1）
+  - [ ] **`JA|EN` 言語トグル**コンポーネント（M0 の `POST /locale` を叩く。**配置は S1 ログイン画面のみ**。S7 設定画面にも置く＝M8 で対応。全画面ヘッダーには常設しない。[decisions.md](decisions.md) §1.3、[screens.md](screens.md)）
 - **テスト観点**：新規ユーザー作成、既存ユーザーの `home` 遷移、未登録ユーザーの `profile.register` 遷移、未認証アクセスの `login` リダイレクト。
 - **完了条件**：DoD ＋ ログイン→（登録状況に応じた）遷移が動く。
 - **備考**：MVP はセッション認証（[decisions.md](decisions.md) §3.1）。
@@ -131,19 +142,22 @@ flowchart TD
 
 ---
 
-### M5 称号（S5, S6）
+### M5 称号（S5, S6）― Count・Streak 両方式
 
-- **目的**：登録の結果として累計回数で称号を同期判定し、獲得モーダル＋X投稿文を出す。
+- **目的**：登録の結果として「回数系（Count）」「連続日数系（Streak）」の両方式で称号を同期判定し、獲得モーダル＋X投稿文を出す。
 - **依存**：M4
 - **対応画面/機能**：S5（称号獲得モーダル）・S6（X投稿文生成モーダル）／[features.md](features.md)「称号判定」「X投稿文生成」／[screens.md](screens.md)（ルートを持たないモーダル）
 - **タスク**：
-  - [ ] `TitleGrantService`：登録後に種別別 `COUNT` を集計し `titles.condition_value`（`Count` 型）と比較。新規達成のみ `user_titles` を作成（`UNIQUE(user_id, title_id)`）、獲得称号を返す（[decisions.md](decisions.md) §1.3「称号判定は累計回数方式・同期実行」、[data-model.md](data-model.md) ⑦）
+  - [ ] `TitleGrantService`：`titles` を `condition_type` で分岐して判定（[decisions.md](decisions.md) §1.3）。対象範囲はいずれも `titles.care_event_type_id` で表現（NULL＝全種別、値あり＝その種別のみ）
+    - **Count**：対象範囲の累計記録回数を `COUNT` し `condition_value` と比較
+    - **Streak**：対象範囲で `care_events.occurred_at` の DISTINCT な日付（JST暦日）を新しい順に取得し、**今回保存したイベントの日付を起点に**連続日数を計算、`condition_value` と比較（専用テーブル・カラムは持たない都度計算）
+    - いずれも新規達成のみ `user_titles` を作成（`UNIQUE(user_id, title_id)`）、獲得称号（＋ Count 型の場合は累計回数。X投稿文 S6 で使用）を返す
   - [ ] `CareEventController@store` から同期呼び出し、Inertia レスポンスに獲得称号を含める
   - [ ] Vue：`components/TitleUnlockedModal.vue`（S5）、`components/XShareModal.vue`（S6・クライアント側で文面生成＋コピー＋Xを開くリンク。サーバー往復なし）
-  - [ ] `user_titles` は永久保持（`care_events` 編集・削除で再判定・取り消しをしない。[decisions.md](decisions.md) §1.3）
-- **テスト観点**：しきい値到達で付与、二重付与なし、レスポンスに獲得称号が含まれる、既取得は再付与しない。
-- **完了条件**：DoD ＋ 記録→称号獲得→X投稿文コピーの流れが動く。
-- **ブロッカー**：未決 #4（しきい値の具体値）。構造は実装可、数値は暫定。`Streak`（連続日数系）型は構造だけ用意し、MVP の判定対象は `Count` 中心でよい。
+  - [ ] `user_titles` は永久保持（`care_events` 編集・削除で再判定・取り消しをしない。Streak も同様。[decisions.md](decisions.md) §1.3）
+- **テスト観点**：Count・Streak それぞれでしきい値到達時に付与、二重付与なし、レスポンスに獲得称号が含まれる、既取得は再付与しない、Streak は記録が1日途切れると連続日数がリセットされる、バックデート入力（S10）でも起点日から正しく連続日数を数える。
+- **完了条件**：DoD ＋ 記録→称号獲得（Count・Streak 双方）→X投稿文コピーの流れが動く。
+- **ブロッカー**：未決 #4（しきい値の具体値）。判定ロジック・構造は確定・実装可、数値のみ暫定。
 
 ---
 
@@ -185,8 +199,9 @@ flowchart TD
   - [ ] `SettingsController@index`（`GET /settings`＝S7ハブ。プロフィール編集・ピン留め設定・ログアウトへの入口。全体集計導線は置かない＝[decisions.md](decisions.md) §1.3）
   - [ ] `SlotConfigController`（`edit`＝S9 / `update`）、`UpdateSlotConfigRequest`（8個・重複不可・許可種別のみ・`slot_position` 1〜8。Policy 不要＝自分にスコープ）
   - [ ] Vue：`Pages/Settings/Index.vue`（S7）、`Pages/Settings/Slots.vue`（S9）
+  - [ ] **S7 に `JA|EN` 言語切り替え項目**（M0 の `POST /locale` を叩く。S1 と並ぶ言語切り替えの2箇所目。[decisions.md](decisions.md) §1.3）
   - [ ] カスタムイベント管理（S14）・卒業・広告は Phase 2+ の“器”として導線プレースホルダのみ（[screens.md](screens.md) S7・S14）
-- **テスト観点**：ピン留め入れ替えの upsert、種別重複拒否、許可外種別拒否、ログアウト。
+- **テスト観点**：ピン留め入れ替えの upsert、種別重複拒否、許可外種別拒否、ログアウト、言語切り替えで cookie が変わる。
 - **完了条件**：DoD ＋ ピン留めを変更すると S3 の8アイコンに反映される。
 
 ---

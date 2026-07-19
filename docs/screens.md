@@ -42,6 +42,10 @@ S3・S12・S13・S7の4画面は、常時表示のナビゲーションから互
 - **モバイル（優先）**：画面下部のタブバー。項目は「記録（S3）」「履歴（S13）」「集計（S12）」「設定（S7）」の4つ。
 - **Web（PC）**：画面左のサイドバー。同じ4項目を縦に並べる。
 
+### 言語切り替え（`JA|EN`）
+
+言語切り替えは **S1（ログイン画面）と S7（設定画面）の2箇所のみ**に置く（全画面ヘッダーには常設しない）。タップで `POST /locale`（`locale.update`）を叩き、cookie にロケールを保存して直前の画面へリダイレクトする。用途は「父親は日本人だが、外国人の妻に英語で見せたい時に切り替える」こと（[decisions.md](decisions.md) §1.3）。ログイン前後に S1 で選び、ログイン後は S7 から変更する。既定は `ja`、英語未翻訳のキーは日本語にフォールバックする。ロケールは cookie 保持で DB には保存しない。
+
 ---
 
 ## 画面遷移図（全体俯瞰）
@@ -126,6 +130,7 @@ flowchart TD
 | PATCH | `/settings/profile` | `settings.profile.update` | S8保存 | |
 | PUT | `/settings/slots` | `settings.slots.update` | S9保存 | ピン留め8個の入れ替え |
 | POST | `/logout` | `logout` | S7のログアウト | |
+| POST | `/locale` | `locale.update` | 言語切り替え（`JA\|EN` トグル） | cookieにロケール保存後、直前の画面へリダイレクト。全画面ヘッダー共通（[decisions.md](decisions.md) §1.3） |
 
 **ルートを持たない画面**：S5（称号獲得モーダル）・S6（X投稿文生成モーダル）。S5は`POST /care-events`のレスポンス（称号獲得情報を含む）を受けてVue側で自動表示し、S6はS5内のデータからクライアント側でテキスト生成するのみで、いずれもサーバー往復は不要。
 
@@ -186,5 +191,5 @@ MVPの画面一覧（S1〜S13）には含めないが、実装より前に仕様
 | POST | `/settings/custom-event-types` | `settings.custom-event-types.store` | 追加。8個上限を超える場合はバリデーションエラー |
 | DELETE | `/settings/custom-event-types/{care_event_type}` | `settings.custom-event-types.destroy` | 物理削除。確認モーダルで警告表示後に実行 |
 
-- **Controller**：`CustomCareEventTypeController`（`index`/`store`/`destroy`）。`store`は`StoreCustomCareEventTypeRequest`（上限8個・自分の`user_id`スコープ内での名前重複チェック）、`destroy`は`CustomCareEventTypePolicy@delete`（他人のカスタム種別IDを弾く）
+- **Controller**：`CustomCareEventTypeController`（`index`/`store`/`destroy`）。`store`は`StoreCustomCareEventTypeRequest`（上限8個・自分の`user_id`スコープ内での名前重複チェック）に加え、生成された`id`（ULID）が予約接頭辞`0STD`（TotoOps標準17行専用の固定ID空間。[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ③）から始まっていた場合は再生成するガードを持つ。`destroy`は`CustomCareEventTypePolicy@delete`（他人のカスタム種別IDを弾く）
 - 画面詳細（コントロール配置）は[wireframes.md](wireframes.md) S14を参照
