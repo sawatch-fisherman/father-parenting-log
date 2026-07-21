@@ -55,6 +55,7 @@ flowchart TD
 - **タスク**：
   - [ ] Enum（int backed・`label()` を持つ）：`App\Enums\AgeGroup` / `App\Enums\ChildAgeGroup` / `App\Enums\TitleConditionType`（[data-model.md](data-model.md) ②⑥、[decisions.md](decisions.md) §1.3「コード値とラベルの分離」）
   - [ ] マイグレーション（**MVPは7テーブル**。ULID `CHAR(26)` 主キー）：`users` / `profiles` / `care_event_types` / `care_events` / `user_slot_configs` / `titles` / `user_titles`
+    - **`users` は既存スキャフォールドの `0001_01_01_000000_create_users_table.php` を直接書き換える（新規マイグレーションで後から ALTER しない）**：`migrate` 実行実績のない greenfield 状態のため、`name`/`email`/`email_verified_at`/`password` カラムと `password_reset_tokens` テーブル定義を削除し、`id` を ULID 化、`provider`/`provider_id`（`UNIQUE(provider, provider_id)`）を追加。`remember_token` と `sessions` テーブルはそのまま残す（セッション認証で使用。[data-model.md](data-model.md) ①）
     - `care_events`：`UNIQUE(user_id, care_event_type_id, occurred_at)`（二重送信防止）、`INDEX(user_id, care_event_type_id)`、`INDEX(user_id, occurred_at)`、`occurred_at DATETIME(3)`
     - `user_slot_configs`：`UNIQUE(user_id, slot_position)`、`UNIQUE(user_id, care_event_type_id)`
     - FK の `ON DELETE` 方針は data-model.md 各節に従う（`care_event_type_id`→`care_events` は CASCADE、`titles`/`user_titles` の `title_id` は RESTRICT 等）
