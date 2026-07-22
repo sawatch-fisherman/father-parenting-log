@@ -173,8 +173,8 @@ flowchart TD
   - [ ] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
   - [ ] `CareEventController`（`edit` / `update` / `destroy`）、`UpdateCareEventRequest`（**`occurred_at` のみ許可**。種別変更は不可＝削除→再作成。**`occurred_at <= now() + 5分` の上限バリデーションは `StoreCareEventRequest` と共通**。[decisions.md](decisions.md) §1.3）
   - [ ] `CareEventPolicy`（`update` / `delete`＝所有者チェック。`{care_event}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）
-  - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11）、`Pages/CareEvents/Edit.vue`（S11・日時変更／削除のみ）
-- **テスト観点**：他人の記録を Policy で弾く、`occurred_at` のみ更新、削除、更新先が既存行と衝突→バリデーションエラー、未来日時（`now() + 5分` 超）への変更が拒否される。
+  - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`care_events` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13空状態）、`Pages/CareEvents/Edit.vue`（S11・日時変更／削除のみ）
+- **テスト観点**：他人の記録を Policy で弾く、`occurred_at` のみ更新、削除、更新先が既存行と衝突→バリデーションエラー、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
 
 ---
@@ -186,9 +186,9 @@ flowchart TD
 - **対応画面/機能**：S12（期間別集計）／[features.md](features.md)「ダッシュボード集計」／[screens.md](screens.md) `stats.index`
 - **タスク**：
   - [ ] `StatsController@index`（`GET /stats`）：日/週/月/全期間の集計（Query Scope）＋イベント種別ごとの件数内訳。全期間タブ＝累計実績（累計おむつ交換数 等）。自分の `care_events` を直接集計（Phase 2 の集約テーブルは使わない。[decisions.md](decisions.md) §1.3）
-  - [ ] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋グラフ＋内訳テーブル）
+  - [ ] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋グラフ＋内訳テーブル。**対象期間の記録が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S12空状態）
   - [ ] Phase 2 導線（称号図鑑・全体傾向）は本スライスでは**器のみ or 省略**（[screens.md](screens.md) S12 備考、[decisions.md](decisions.md) §1.3）
-- **テスト観点**：各期間の集計値の正しさ、種別別内訳、データ無しの空状態。
+- **テスト観点**：各期間の集計値の正しさ、種別別内訳、対象期間の記録が0件のときに空状態が表示される（グラフ・内訳の代わりに）。
 - **完了条件**：DoD ＋ 4タブの集計が表示される。
 
 ---
