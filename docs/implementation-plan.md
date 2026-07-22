@@ -107,7 +107,8 @@ flowchart TD
   - [ ] `store` 時に `config/totoops.php` の初期8個から `user_slot_configs` に8行を作成（[data-model.md](data-model.md) ⑤、[decisions.md](decisions.md) §1.3）
   - [ ] Policy 不要（ID を URL に含めず常に自分のプロフィールを操作。[screens.md](screens.md) Controller構成の補足）
   - [ ] Vue：`Pages/Profile/Register.vue`（S2）、`Pages/Settings/ProfileEdit.vue`（S8。閲覧も兼ねる）
-- **テスト観点**：profile 作成＋slot 8行生成、`nickname` 必須バリデーション、未選択時 `Unanswered`、更新。
+  - [ ] **`EnsureProfileIsComplete` ミドルウェア**：`$request->user()->profile()->exists()`（`profiles.user_id` の `UNIQUE` インデックスを使った存在確認）が `false` なら `profile.register` へリダイレクト。`auth` 系ルート全体に適用し、`profile.register`・`profile.store`・`logout`・`locale.update` は対象外にする（無限リダイレクト防止）。ログイン直後の callback 分岐（M1）だけでなく、プロフィール未登録のまま `/` 等へ直接アクセスした場合もこのミドルウェアで防ぐ
+- **テスト観点**：profile 作成＋slot 8行生成、`nickname` 必須バリデーション、未選択時 `Unanswered`、更新、プロフィール未登録ユーザーが `/` 等へ直接アクセスすると `profile.register` へリダイレクトされる。
 - **完了条件**：DoD ＋ 登録後に S3 が「8アイコン表示可能な状態」になる。
 - **ブロッカー**：未決 #11（初期8個の中身）。暫定リストで着手可。
 
@@ -133,12 +134,12 @@ flowchart TD
 - **依存**：M3
 - **対応画面/機能**：S3短タップ・S4（その他）・S10（実施日時指定）／[features.md](features.md)「育児イベント登録」「育児イベント種別管理（その他ボタン）」／[screens.md](screens.md) `care-events.store`・`care-events.create`・`care-event-types.other`
 - **タスク**：
-  - [ ] `CareEventController`（`create`＝S10 / `store`＝共通登録）、`StoreCareEventRequest`（`care_event_type_id` 実在＋スコープ、`occurred_at`、`memo` 任意）
+  - [ ] `CareEventController`（`create`＝S10 / `store`＝共通登録）、`StoreCareEventRequest`（`care_event_type_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at <= now() + 5分` の上限バリデーション**を含む。[decisions.md](decisions.md) §1.3）
   - [ ] `CareEventTypeController@other`（`GET /care-event-types/other`＝S4）：`user_slot_configs` に無い残り種別を返す（MVP は17個中9個）
   - [ ] `POST /care-events`：**クライアントが `occurred_at`（ミリ秒精度）を必ず送信**。`UNIQUE(user_id, care_event_type_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
   - [ ] Vue：S3短タップ＝タップ時刻送信＋送信中ボタン disable／長押し→S10。`Pages/CareEvents/Create.vue`（S10・日時指定）、`Pages/CareEventTypes/Other.vue`（S4）
   - [ ] 称号判定はこのスライスでは空配列スタブ（M5 で実装）
-- **テスト観点**：1レコード作成、同一 `occurred_at` の二重送信ブロック、「その他」一覧がピン留め8個を除外、S10 分精度の衝突エラー、`occurred_at` 省略時の `now()` フォールバック。
+- **テスト観点**：1レコード作成、同一 `occurred_at` の二重送信ブロック、「その他」一覧がピン留め8個を除外、S10 分精度の衝突エラー、`occurred_at` 省略時の `now()` フォールバック、`now() + 5分` を超える未来日時が拒否される、`now() + 5分` 以内は許容される。
 - **完了条件**：DoD ＋ 短タップ／その他→S10 の両経路で記録できる。
 
 ---
@@ -152,11 +153,12 @@ flowchart TD
   - [ ] `TitleGrantService`：`titles` を `condition_type` で分岐して判定（[decisions.md](decisions.md) §1.3）。対象範囲はいずれも `titles.care_event_type_id` で表現（NULL＝全種別、値あり＝その種別のみ）
     - **Count**：対象範囲の累計記録回数を `COUNT` し `condition_value` と比較
     - **Streak**：対象範囲で `care_events.occurred_at` の DISTINCT な日付（JST暦日）を新しい順に取得し、**今回保存したイベントの日付を起点に**連続日数を計算、`condition_value` と比較（専用テーブル・カラムは持たない都度計算）
-    - いずれも新規達成のみ `user_titles` を作成（`UNIQUE(user_id, title_id)`）、獲得称号（＋ Count 型の場合は累計回数。X投稿文 S6 で使用）を返す
-  - [ ] `CareEventController@store` から同期呼び出し、Inertia レスポンスに獲得称号を含める
-  - [ ] Vue：`components/TitleUnlockedModal.vue`（S5）、`components/XShareModal.vue`（S6・クライアント側で文面生成＋コピー＋Xを開くリンク。サーバー往復なし）
+    - いずれも新規達成のみ `user_titles` を作成（`UNIQUE(user_id, title_id)`）
+    - **`achievement_text` をサーバー側で組み立てて返す**：`condition_type`／`care_event_type_id` の有無（Count種別あり／Count全体／Streak種別あり／Streak全体の4パターン）を `lang/ja`（将来 `lang/en`）の `__()` で分岐整形し、現在のロケール（`App::getLocale()`。M0のi18n基盤で既にリクエストごとに設定済み）で完成済みの一文（例：`"累計おむつ交換：100回。"`／`"7日連続育児ログ達成。"`）として返す。X投稿文の言語ごとの文言をVue側と二重管理しない、かつ「サーバー往復なし」の原則も壊さない（このデータは既存の`POST /care-events`レスポンスに乗るだけで追加リクエストは発生しない）
+  - [ ] `CareEventController@store` から同期呼び出し、Inertia レスポンスに獲得称号（`name`・`achievement_text`）を含める
+  - [ ] Vue：`components/TitleUnlockedModal.vue`（S5）、`components/XShareModal.vue`（S6・**固定レイアウト部分（絵文字・称号名・ハッシュタグ）のみクライアント側で組み立て**、`achievement_text` はサーバーから受け取った値をそのまま埋め込む＋コピー＋Xを開くリンク。サーバー往復なし）
   - [ ] `user_titles` は永久保持（`care_events` 編集・削除で再判定・取り消しをしない。Streak も同様。[decisions.md](decisions.md) §1.3）
-- **テスト観点**：Count・Streak それぞれでしきい値到達時に付与、二重付与なし、レスポンスに獲得称号が含まれる、既取得は再付与しない、Streak は記録が1日途切れると連続日数がリセットされる、バックデート入力（S10）でも起点日から正しく連続日数を数える。
+- **テスト観点**：Count・Streak それぞれでしきい値到達時に付与、二重付与なし、レスポンスに獲得称号（`name`・`achievement_text`）が含まれる、4パターンそれぞれで `achievement_text` の文面が正しい、既取得は再付与しない、Streak は記録が1日途切れると連続日数がリセットされる、バックデート入力（S10）でも起点日から正しく連続日数を数える。
 - **完了条件**：DoD ＋ 記録→称号獲得（Count・Streak 双方）→X投稿文コピーの流れが動く。
 - **ブロッカー**：未決 #4（しきい値の具体値）。判定ロジック・構造は確定・実装可、数値のみ暫定。
 
@@ -169,10 +171,10 @@ flowchart TD
 - **対応画面/機能**：S13（記録履歴）・S11（ログ編集）／[features.md](features.md)「記録履歴（タイムライン）」／[screens.md](screens.md) `history.index`・`care-events.edit`・`care-events.update`・`care-events.destroy`
 - **タスク**：
   - [ ] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
-  - [ ] `CareEventController`（`edit` / `update` / `destroy`）、`UpdateCareEventRequest`（**`occurred_at` のみ許可**。種別変更は不可＝削除→再作成。[decisions.md](decisions.md) §1.3）
+  - [ ] `CareEventController`（`edit` / `update` / `destroy`）、`UpdateCareEventRequest`（**`occurred_at` のみ許可**。種別変更は不可＝削除→再作成。**`occurred_at <= now() + 5分` の上限バリデーションは `StoreCareEventRequest` と共通**。[decisions.md](decisions.md) §1.3）
   - [ ] `CareEventPolicy`（`update` / `delete`＝所有者チェック。`{care_event}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）
   - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11）、`Pages/CareEvents/Edit.vue`（S11・日時変更／削除のみ）
-- **テスト観点**：他人の記録を Policy で弾く、`occurred_at` のみ更新、削除、更新先が既存行と衝突→バリデーションエラー。
+- **テスト観点**：他人の記録を Policy で弾く、`occurred_at` のみ更新、削除、更新先が既存行と衝突→バリデーションエラー、未来日時（`now() + 5分` 超）への変更が拒否される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
 
 ---
@@ -198,11 +200,11 @@ flowchart TD
 - **対応画面/機能**：S7（設定ハブ）・S9（ピン留め設定）／[features.md](features.md)「設定画面（ハブ）」「育児イベント種別管理（常時8アイコン）」／[screens.md](screens.md) `settings.index`・`settings.slots.edit`・`settings.slots.update`
 - **タスク**：
   - [ ] `SettingsController@index`（`GET /settings`＝S7ハブ。プロフィール編集・ピン留め設定・ログアウトへの入口。全体集計導線は置かない＝[decisions.md](decisions.md) §1.3）
-  - [ ] `SlotConfigController`（`edit`＝S9 / `update`）、`UpdateSlotConfigRequest`（8個・重複不可・許可種別のみ・`slot_position` 1〜8。Policy 不要＝自分にスコープ）
+  - [ ] `SlotConfigController`（`edit`＝S9 / `update`）、`UpdateSlotConfigRequest`（8個・重複不可・許可種別のみ・`slot_position` 1〜8。Policy 不要＝自分にスコープ）。**`update` は delete-insert 方式**：バリデーション通過後、対象ユーザーの既存8行を全削除→新しい8行を挿入を1トランザクションで実行する（1行ずつUPDATEすると入れ替え途中で`UNIQUE(user_id, care_event_type_id)`に触れうるため。[decisions.md](decisions.md) §1.3）
   - [ ] Vue：`Pages/Settings/Index.vue`（S7）、`Pages/Settings/Slots.vue`（S9）
   - [ ] **S7 に `JA|EN` 言語切り替え項目**（M0 の `POST /locale` を叩く。S1 と並ぶ言語切り替えの2箇所目。[decisions.md](decisions.md) §1.3）
   - [ ] カスタムイベント管理（S14）・卒業・広告は Phase 2+ の“器”として導線プレースホルダのみ（[screens.md](screens.md) S7・S14）
-- **テスト観点**：ピン留め入れ替えの upsert、種別重複拒否、許可外種別拒否、ログアウト、言語切り替えで cookie が変わる。
+- **テスト観点**：ピン留め入れ替え（delete-insert）で一意制約違反にならない、種別重複拒否、許可外種別拒否、ログアウト、言語切り替えで cookie が変わる。
 - **完了条件**：DoD ＋ ピン留めを変更すると S3 の8アイコンに反映される。
 
 ---
