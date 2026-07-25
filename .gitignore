@@ -28,9 +28,13 @@ CLAUDE.md
 prompts/
 .claude/
 
+# src/配下はLaravel Boostが生成する共有ガイド・スキルのため追跡対象に戻す
+!src/CLAUDE.md
+!src/.claude/
+
 # =========================
 # Laravel / PHP
-# Laravel�{�̂� src/ �z���ɒu���z��
+# Laravel本体を src/ 配下に配置する構成
 # =========================
 src/vendor/
 src/.phpunit.result.cache
