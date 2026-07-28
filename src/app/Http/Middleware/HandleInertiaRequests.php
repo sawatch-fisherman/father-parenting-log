@@ -10,7 +10,7 @@ use Inertia\Middleware;
 class HandleInertiaRequests extends Middleware
 {
     /**
-     * The root template that's loaded on the first page visit.
+     * 初回ページ訪問時に読み込まれるルートテンプレート。
      *
      * @see https://inertiajs.com/server-side-setup#root-template
      *
@@ -19,7 +19,7 @@ class HandleInertiaRequests extends Middleware
     protected $rootView = 'app';
 
     /**
-     * Determines the current asset version.
+     * 現在のアセットバージョンを判定する。
      *
      * @see https://inertiajs.com/asset-versioning
      */
@@ -29,7 +29,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Define the props that are shared by default.
+     * デフォルトで共有するpropsを定義する。
      *
      * @see https://inertiajs.com/shared-data
      *

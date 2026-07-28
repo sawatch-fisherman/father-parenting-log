@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class UserTitleFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * モデルのデフォルト状態を定義する。
      *
      * @return array<string, mixed>
      */

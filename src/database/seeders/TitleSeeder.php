@@ -18,7 +18,7 @@ use Illuminate\Database\Seeder;
 class TitleSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * アプリケーションのデータベースにシードデータを投入する。
      */
     public function run(): void
     {

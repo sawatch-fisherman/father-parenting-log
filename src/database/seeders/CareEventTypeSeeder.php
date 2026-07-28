@@ -14,7 +14,7 @@ use Illuminate\Database\Seeder;
 class CareEventTypeSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * アプリケーションのデータベースにシードデータを投入する。
      */
     public function run(): void
     {

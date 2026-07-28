@@ -17,7 +17,7 @@ class SetLocale
     private const SUPPORTED_LOCALES = ['ja', 'en'];
 
     /**
-     * Handle an incoming request.
+     * 受信したリクエストを処理する。
      */
     public function handle(Request $request, Closure $next): Response
     {
