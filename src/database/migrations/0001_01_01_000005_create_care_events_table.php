@@ -19,8 +19,10 @@ return new class extends Migration
             $table->string('memo', 255)->nullable();
             $table->timestamps();
 
-            $table->index(['user_id', 'care_event_type_id']);
             $table->index(['user_id', 'occurred_at']);
+            // 種別別集計用の (user_id, care_event_type_id) は、下記UNIQUEの左端プレフィックスで
+            // 完全にカバーできるため単独のINDEXは張らない（最も行数が増えるログテーブルで、
+            // INSERTごとの不要なインデックス更新と容量を避ける）。
             $table->unique(['user_id', 'care_event_type_id', 'occurred_at']);
         });
     }

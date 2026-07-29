@@ -18,8 +18,9 @@ function resolve(messages: Messages, key: string): unknown {
 }
 
 export function useTrans() {
+    const page = usePage<SharedProps>();
+
     function t(key: string, replacements: Record<string, string | number> = {}): string {
-        const page = usePage<SharedProps>();
         const value = resolve(page.props.messages, key);
         let text = typeof value === 'string' ? value : key;
 

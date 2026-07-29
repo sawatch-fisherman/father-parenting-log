@@ -9,7 +9,12 @@ use Illuminate\Database\Seeder;
 /**
  * TotoOps 標準の育児イベント種別17行（`user_id IS NULL`）を投入する。
  *
+ * 同一性キーは表示ラベル（`name`）ではなく{@see CareEventTypeId}の固定ULID。何度実行しても
+ * 17行のままになる（冪等）。`id`は`Fillable`に含めない（Phase 2のカスタム種別作成で
+ * クライアントが主キーを指定できてしまうのを防ぐため）ので、Seederからは`forceFill()`で明示的に代入する。
+ *
  * @see docs/features.md「育児イベント種別一覧（基本8個の選定候補プール）」
+ * @see docs/data-model.md ③ `care_event_types`
  */
 class CareEventTypeSeeder extends Seeder
 {
@@ -39,10 +44,14 @@ class CareEventTypeSeeder extends Seeder
         ];
 
         foreach ($types as $sortOrder => [$id, $name]) {
-            CareEventType::query()->updateOrCreate(
-                ['id' => $id],
-                ['user_id' => null, 'name' => $name, 'sort_order' => $sortOrder + 1],
-            );
+            $careEventType = CareEventType::query()->find($id) ?? new CareEventType;
+
+            $careEventType->forceFill([
+                'id' => $id,
+                'user_id' => null,
+                'name' => $name,
+                'sort_order' => $sortOrder + 1,
+            ])->save();
         }
     }
 }

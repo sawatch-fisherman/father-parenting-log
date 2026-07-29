@@ -5,6 +5,14 @@ namespace App\Support;
 /**
  * TotoOps 標準の育児イベント種別（`care_event_types.user_id IS NULL` の17行）に対する固定ULID。
  *
+ * 書式は`0`＋接頭辞`STD`＋ゼロ埋め連番22桁の計26文字（Crockford Base32のみ使用）。
+ *
+ * 注意：ここでの固定IDは大文字だが、`HasUlids::newUniqueId()` が生成するULIDは小文字のため、
+ * `care_event_types.id` には大文字と小文字のULIDが混在する。予約接頭辞`0STD`のガード
+ * （docs/data-model.md ③ の Phase 2 要件）や PHP 側での比較を書く際は、
+ * 必ず大小文字を無視すること（例：`str_starts_with(strtoupper($id), '0STD')`）。
+ * 素の `str_starts_with($id, '0STD')` は小文字の生成値に対して機能しない。
+ *
  * @see docs/data-model.md ③ `care_event_types`
  * @see docs/decisions.md §1.3「ID／主キーの UUID 化」例外規定
  */

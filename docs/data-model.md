@@ -62,8 +62,8 @@ erDiagram
     }
     CARE_EVENTS["CARE_EVENTS（育児ログ）"] {
         char26 id PK
-        char26 user_id FK, UK "ユーザーID; 複合INDEXにも参加: (user_id,care_event_type_id)/(user_id,occurred_at)"
-        char26 care_event_type_id FK, UK "イベント種別ID; 複合INDEXにも参加: (user_id,care_event_type_id)"
+        char26 user_id FK, UK "ユーザーID; 複合INDEXにも参加: (user_id,occurred_at)"
+        char26 care_event_type_id FK, UK "イベント種別ID"
         datetime3 occurred_at UK "実施日時; 複合INDEXにも参加: (user_id,occurred_at)"
         varchar255 memo "メモ"
     }
@@ -169,8 +169,8 @@ TotoOps定義のイベント種別とユーザーカスタムイベントを同�
 
 - `is_default`／`is_preset`のような列は持たない。「どの8個を常時表示するか」は本テーブルの属性ではなく、**ユーザーごとの選択**として⑤`user_slot_configs`側で管理する（[decisions.md](decisions.md) §1.3）。
 - 登録時に自動セットする「共通のおすすめ初期8個」も、本テーブルの列としては持たない。**アプリ層の設定（config配列 or Seeder時の固定リスト）**として持ち、プロフィール登録完了時に⑤へ8行を作成する処理から参照する。具体的にどの8個にするかは未決（[decisions.md](decisions.md) 未決#11。実際の育児で使ってから確定する）。
-- **`id`（標準17行）の採番規則**：TotoOps標準17行（`user_id IS NULL`）は、通常の`HasUlids`によるランダム生成ではなく、**Seederで固定のULID文字列を明示的に指定**する（[decisions.md](decisions.md) §1.3）。書式は先頭1文字`0`（ULID仕様上1文字目は`0`〜`7`に制限されるため）＋接頭辞`STD`（TotoOps標準の意）＋ゼロ埋め連番22桁（例：`0STD0000000000000000001`〜`0STD0000000000000000017`）。使用文字はCrockford Base32の32種のみ（`I`・`L`・`O`・`U`は不可）。理由：Seeder実行前は本来ランダム生成のIDが存在せず、`config/totoops.php`（初期おすすめ8個）や⑥`titles`のSeederが標準種別を名指しする手段が`name`（表示ラベル、変更されうる）の文字列一致しかなくなってしまう問題を避けるため。可読性のため、各IDは名前付きPHP定数（例：`App\Support\CareEventTypeId::DIAPER_CHANGE`）として1箇所に定義し、`CareEventTypeSeeder`・`TitleSeeder`・`config/totoops.php`から共通参照する。
-- **ユーザーカスタム行のID予約接頭辞ガード（Phase 2以降）**：ユーザーカスタムイベント作成時（`CustomCareEventTypeController@store`）、`HasUlids`が生成したULIDが予約接頭辞`0STD`から始まっていた場合は再生成する。標準17行の固定ID空間とユーザーカスタムのIDが偶然重なり、DBを直接確認する際に紛らわしくなることを避けるため。二重登録は`id`が主キーのためDBレベルでも防がれるが、この予約接頭辞との衝突は「既存行との重複」ではなく「未使用だが紛らわしい値」なので主キー制約だけでは防げず、アプリ層のガードが必要。ユーザーカスタムは1ユーザー最大8個・低頻度の作成のため、このチェックによる負荷は無視できる。
+- **`id`（標準17行）の採番規則**：TotoOps標準17行（`user_id IS NULL`）は、通常の`HasUlids`によるランダム生成ではなく、**Seederで固定のULID文字列を明示的に指定**する（[decisions.md](decisions.md) §1.3）。書式は先頭1文字`0`（ULID仕様上1文字目は`0`〜`7`に制限されるため）＋接頭辞`STD`（TotoOps標準の意）＋ゼロ埋め連番22桁の計26文字（例：`0STD0000000000000000000001`〜`0STD0000000000000000000017`）。使用文字はCrockford Base32の32種のみ（`I`・`L`・`O`・`U`は不可）。理由：Seeder実行前は本来ランダム生成のIDが存在せず、`config/totoops.php`（初期おすすめ8個）や⑥`titles`のSeederが標準種別を名指しする手段が`name`（表示ラベル、変更されうる）の文字列一致しかなくなってしまう問題を避けるため。可読性のため、各IDは名前付きPHP定数（例：`App\Support\CareEventTypeId::DIAPER_CHANGE`）として1箇所に定義し、`CareEventTypeSeeder`・`TitleSeeder`・`config/totoops.php`から共通参照する。
+- **ユーザーカスタム行のID予約接頭辞ガード（Phase 2以降）**：ユーザーカスタムイベント作成時（`CustomCareEventTypeController@store`）、`HasUlids`が生成したULIDが予約接頭辞`0STD`から始まっていた場合は再生成する。標準17行の固定ID空間とユーザーカスタムのIDが偶然重なり、DBを直接確認する際に紛らわしくなることを避けるため。二重登録は`id`が主キーのためDBレベルでも防がれるが、この予約接頭辞との衝突は「既存行との重複」ではなく「未使用だが紛らわしい値」なので主キー制約だけでは防げず、アプリ層のガードが必要。ユーザーカスタムは1ユーザー最大8個・低頻度の作成のため、このチェックによる負荷は無視できる。なお**このガードは大小文字を無視して判定する**こと：固定17行のIDは大文字表記だが、`HasUlids::newUniqueId()`が生成するULIDは小文字のため同一カラムに大文字と小文字が混在し、素の`str_starts_with($id, '0STD')`では小文字の生成値（`0std…`）を取りこぼす。
 - **ユーザーカスタムの上限と削除方式**（[decisions.md](decisions.md) §1.3、**Phase 2以降の機能**）：MVPではカスタム作成自体を提供しない。Phase 2以降で対応する際は、生存数の上限を合計8個までとし、9個目作成時はユーザーが既存8個から1つを選んで**物理削除**する（選択UIの実装もPhase 2〜4のどこかで対応）。物理削除は紐づく`care_events`（④）の履歴も`ON DELETE CASCADE`で道連れに削除するため、実行前にUIで「過去のログも削除されます」という警告を出し、ユーザーの同意を得てから実行する。ソフト削除・`SoftDeletes`（`deleted_at`）は使わない：本テーブルには「削除済みだが復元可能」という中間状態は存在せず（生存かカスケード物理削除かの2択）、ソフト削除のみだと削除・再作成を繰り返すたびに行数の上限を実効的に担保できないため。
 - `name`の重複防止は、`user_id`にNULLが混在するとDBのUNIQUE制約だけでは素直に効かせにくい（MySQLはUNIQUE内のNULL同士を別物として扱う）ため、アプリ層（`user_id`スコープ内での重複チェック）で担保する。
 - **`sort_order`の採番規則**：TotoOps定義17行はSeederで`1〜17`を明示的に採番する（ピン留めの有無で値が変わることはない）。ユーザーカスタム行（Phase 2以降）は、そのユーザーの1個目が`18`、2個目が`19`…という形で採番する。この番号は**ユーザーごとに独立**しており、他ユーザーのカスタムと重複してよい（`sort_order`で並べ替えるクエリは常に「`user_id IS NULL`＋`user_id = 自分`」にスコープされるため、他ユーザーの値と比較される場面が無い）。カスタムを削除して9個目を作る場合も、空いた番号を詰め直す必要はなく、そのユーザーの既存カスタムの最大`sort_order` + 1を採番すればよい。
@@ -192,9 +192,8 @@ TotoOps定義のイベント種別とユーザーカスタムイベントを同�
 
 インデックス：
 
-- `INDEX (user_id, care_event_type_id)` — 累計実績・種別別集計用
 - `INDEX (user_id, occurred_at)` — 日別タイムライン・今日／週／月集計用
-- `UNIQUE (user_id, care_event_type_id, occurred_at)` — 二重送信防止（[decisions.md](decisions.md) §1.3）。専用の`idempotency_key`列は持たない
+- `UNIQUE (user_id, care_event_type_id, occurred_at)` — 二重送信防止（[decisions.md](decisions.md) §1.3）。専用の`idempotency_key`列は持たない。累計実績・種別別集計（`user_id`＋`care_event_type_id`での絞り込み）もこのUNIQUEの**左端プレフィックス**で賄えるため、`INDEX (user_id, care_event_type_id)`は別途張らない（当初案では張る想定だったが、最も行数が増えるログテーブルでINSERTごとの不要なインデックス更新と容量が発生するだけなので撤回した）
 
 補足：
 
@@ -257,6 +256,7 @@ TotoOps定義のイベント種別とユーザーカスタムイベントを同�
 - `care_event_type_id`をNULL許容にしているのは、種別限定称号（おむつ交換士など）に加えて、将来「全種別合計◯件達成」のような全体合計称号も作れるようにするため。
 - `titles`はユーザー個別ではなく全ユーザー共通のマスタなので、`care_event_type_id`には**TotoOps定義（`user_id IS NULL`）の行のみ**を設定できるようにする（特定ユーザーのカスタム種別を指す称号は成立しないため）。DBのFKだけでは表現できないため、Seeder投入時・管理側での運用ルールとして担保する。`ON DELETE RESTRICT`にしているのも、称号が参照している種別行を誤って削除できないようにするため（TotoOps定義行はSeeder固定で通常は削除されない）。
 - 具体的なしきい値（`condition_value`の数値）は未決（[decisions.md](decisions.md) 未決#4）。
+- **`id`の採番規則**：③`care_event_types`の標準17行と同じく、**Seederで固定のULID文字列を明示的に指定**する（書式は`0`＋接頭辞`TTS`＋ゼロ埋め連番22桁の計26文字。各IDは`App\Support\TitleId`に名前付き定数として定義する）。理由：`name`（称号名）も`condition_value`（しきい値）も未決#4で後から差し替える前提であり、Seederの同一性キーを`name`にすると称号名を修正した瞬間に既存行が更新されず**重複行が増える**（`titles.name`はUNIQUEではない）。⑦`user_titles.title_id`は`ON DELETE RESTRICT`かつ獲得済み行は永久保持のため、一度増えた重複行は削除もできない。定数名は変わりうる表示ラベルではなく「対象種別＋条件種別＋段階」（例：`TitleId::DIAPER_CHANGE_COUNT_TIER1`）で構成する。
 
 ---
 

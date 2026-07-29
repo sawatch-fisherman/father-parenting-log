@@ -45,11 +45,38 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * `lang/{locale}/*.php` を読み込み、ファイル名をキーとした連想配列にまとめて返す。
+     * 現在ロケールの翻訳を、フォールバックロケールの翻訳に上書きマージして返す。
      *
-     * @return array<string, array<string, mixed>>
+     * PHP 側の `__()` は未翻訳キーを `fallback_locale`（ja）で補うので、Vue 側の `t()` も
+     * 同じ挙動になるよう「フォールバック → 現在ロケール」の順に重ねる。これをしないと
+     * `lang/en/` が未投入の間、英語表示にした瞬間に `nav.record` のような生キーが画面に出る。
+     *
+     * @see docs/decisions.md §1.3「多言語化（i18n）」／§2 未決#18
+     *
+     * @return array<string, mixed>
      */
     private function loadMessages(string $locale): array
+    {
+        $fallbackLocale = App::getFallbackLocale();
+
+        $messages = $this->loadLocaleFiles($fallbackLocale);
+
+        if ($locale !== $fallbackLocale) {
+            $messages = array_replace_recursive($messages, $this->loadLocaleFiles($locale));
+        }
+
+        return $messages;
+    }
+
+    /**
+     * `lang/{locale}/*.php` を読み込み、ファイル名をキーとした連想配列にまとめて返す。
+     *
+     * TODO: 翻訳キーが増えたら `Cache::rememberForever("messages.{$locale}")` 等でのキャッシュ、
+     * もしくはロケール別の静的 JSON 配信を検討する（現状は全 Inertia レスポンスに毎回同梱される）。
+     *
+     * @return array<string, mixed>
+     */
+    private function loadLocaleFiles(string $locale): array
     {
         $path = lang_path($locale);
 
@@ -60,7 +87,9 @@ class HandleInertiaRequests extends Middleware
         $messages = [];
 
         foreach (File::files($path) as $file) {
-            $messages[$file->getFilenameWithoutExtension()] = require $file->getPathname();
+            $loaded = require $file->getPathname();
+
+            $messages[$file->getFilenameWithoutExtension()] = is_array($loaded) ? $loaded : [];
         }
 
         return $messages;

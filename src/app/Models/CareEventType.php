@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['id', 'user_id', 'name', 'sort_order'])]
+#[Fillable(['user_id', 'name', 'sort_order'])]
 class CareEventType extends Model
 {
     /** @use HasFactory<CareEventTypeFactory> */

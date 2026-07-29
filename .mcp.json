@@ -6,7 +6,7 @@
       "args": [
         "compose",
         "-f",
-        "/home/sawatch/github/father-parenting-log/docker/docker-compose.yml",
+        "docker/docker-compose.yml",
         "exec",
         "-T",
         "app",
