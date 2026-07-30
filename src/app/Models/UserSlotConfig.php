@@ -4,16 +4,15 @@ namespace App\Models;
 
 use Database\Factories\UserSlotConfigFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'slot_position', 'care_event_type_id'])]
+#[Fillable(['user_id', 'slot_position', 'care_action_id'])]
 class UserSlotConfig extends Model
 {
     /** @use HasFactory<UserSlotConfigFactory> */
-    use HasFactory, HasUlids;
+    use HasFactory;
 
     /**
      * @return BelongsTo<User, $this>
@@ -24,10 +23,10 @@ class UserSlotConfig extends Model
     }
 
     /**
-     * @return BelongsTo<CareEventType, $this>
+     * @return BelongsTo<CareAction, $this>
      */
-    public function careEventType(): BelongsTo
+    public function careAction(): BelongsTo
     {
-        return $this->belongsTo(CareEventType::class);
+        return $this->belongsTo(CareAction::class);
     }
 }

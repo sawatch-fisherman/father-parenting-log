@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\CareEventTypeId;
+use App\Support\CareActionId;
 
 return [
 
@@ -30,15 +30,15 @@ return [
     |
     */
 
-    'initial_slot_care_event_type_ids' => [
-        CareEventTypeId::DIAPER_CHANGE,
-        CareEventTypeId::MILK_FEEDING,
-        CareEventTypeId::BATH,
-        CareEventTypeId::PUT_TO_SLEEP,
-        CareEventTypeId::NIGHT_CRYING,
-        CareEventTypeId::CHANGE_CLOTHES,
-        CareEventTypeId::WALK_PARK,
-        CareEventTypeId::READ_ALOUD,
+    'initial_slot_care_action_ids' => [
+        CareActionId::DIAPER_CHANGE,
+        CareActionId::MILK_FEEDING,
+        CareActionId::BATH,
+        CareActionId::PUT_TO_SLEEP,
+        CareActionId::NIGHT_CRYING,
+        CareActionId::CHANGE_CLOTHES,
+        CareActionId::WALK_PARK,
+        CareActionId::READ_ALOUD,
     ],
 
 ];

@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('titles', function (Blueprint $table) {
-            $table->ulid('id')->primary();
-            $table->foreignUlid('care_event_type_id')->nullable()->constrained()->restrictOnDelete();
+            // 連番。全ユーザー共通のSeeder固定マスタで、内容自体が公開情報のため
+            // IDが規則的でも隠せる情報がない（docs/decisions.md §1.3「主キー形式の判断基準」）。
+            $table->id();
+            $table->foreignId('care_action_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('name', 50);
             $table->unsignedTinyInteger('condition_type');
             $table->unsignedInteger('condition_value');

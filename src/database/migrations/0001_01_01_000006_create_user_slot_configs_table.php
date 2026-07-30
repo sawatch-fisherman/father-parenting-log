@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_slot_configs', function (Blueprint $table) {
-            $table->ulid('id')->primary();
+            // 連番。ピン留めは (user_id, slot_position) をキーにupsertするだけで、
+            // IDがURL・APIに露出しない（docs/decisions.md §1.3「主キー形式の判断基準」）。
+            $table->id();
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('slot_position');
-            $table->foreignUlid('care_event_type_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('care_action_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
 
             $table->unique(['user_id', 'slot_position']);
-            $table->unique(['user_id', 'care_event_type_id']);
+            $table->unique(['user_id', 'care_action_id']);
         });
     }
 

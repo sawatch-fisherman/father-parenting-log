@@ -2,17 +2,20 @@
 
 namespace App\Models;
 
-use Database\Factories\CareEventFactory;
+use Database\Factories\CareLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'care_event_type_id', 'occurred_at', 'memo'])]
-class CareEvent extends Model
+/**
+ * 育児ログ。父親が行った育児行動そのものを1行1件で記録する、TotoOpsの中核テーブル。
+ */
+#[Fillable(['user_id', 'care_action_id', 'occurred_at', 'memo'])]
+class CareLog extends Model
 {
-    /** @use HasFactory<CareEventFactory> */
+    /** @use HasFactory<CareLogFactory> */
     use HasFactory, HasUlids;
 
     /**
@@ -20,10 +23,10 @@ class CareEvent extends Model
      *
      * 素の `datetime` キャストだと書き込み時にグラマ既定の `Y-m-d H:i:s` が使われ、
      * カラムが `DATETIME(3)` でもミリ秒が切り捨てられてしまう。二重送信防止の
-     * `UNIQUE(user_id, care_event_type_id, occurred_at)` はクライアントが送るミリ秒精度の
+     * `UNIQUE(user_id, care_action_id, occurred_at)` はクライアントが送るミリ秒精度の
      * タイムスタンプが前提のため、秒に丸まると同一秒内の正当な2件目まで弾いてしまう。
      *
-     * @see docs/data-model.md ④ `care_events`
+     * @see docs/data-model.md ④ `care_logs`
      *
      * @return array<string, string>
      */
@@ -43,10 +46,10 @@ class CareEvent extends Model
     }
 
     /**
-     * @return BelongsTo<CareEventType, $this>
+     * @return BelongsTo<CareAction, $this>
      */
-    public function careEventType(): BelongsTo
+    public function careAction(): BelongsTo
     {
-        return $this->belongsTo(CareEventType::class);
+        return $this->belongsTo(CareAction::class);
     }
 }

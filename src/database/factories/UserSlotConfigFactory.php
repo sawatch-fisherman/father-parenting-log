@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\CareEventType;
+use App\Models\CareAction;
 use App\Models\User;
 use App\Models\UserSlotConfig;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,7 +22,7 @@ class UserSlotConfigFactory extends Factory
         return [
             'user_id' => User::factory(),
             'slot_position' => fake()->numberBetween(1, 8),
-            'care_event_type_id' => CareEventType::factory(),
+            'care_action_id' => CareAction::factory(),
         ];
     }
 }

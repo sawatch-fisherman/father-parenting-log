@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('profiles', function (Blueprint $table) {
-            $table->ulid('id')->primary();
+            // 連番。プロフィールは常に「自分自身」に暗黙スコープされIDがURL・APIに一切露出しないため、
+            // ULID化しても隠せる情報がない（docs/decisions.md §1.3「主キー形式の判断基準」）。
+            $table->id();
             $table->foreignUlid('user_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('nickname', 50);
             $table->unsignedTinyInteger('age_group');

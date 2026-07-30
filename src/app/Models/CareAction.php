@@ -2,19 +2,26 @@
 
 namespace App\Models;
 
-use Database\Factories\CareEventTypeFactory;
+use App\Support\CareActionId;
+use Database\Factories\CareActionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * 育児行動（おむつ交換・寝かしつけ 等）。
+ *
+ * TotoOps定義の標準17行（`user_id IS NULL`）とユーザーカスタム行（Phase 2以降）を
+ * 同一テーブルで管理する。主キーは連番で、標準行の予約域は
+ * {@see CareActionId::CUSTOM_ID_FLOOR} を参照。
+ */
 #[Fillable(['user_id', 'name', 'sort_order'])]
-class CareEventType extends Model
+class CareAction extends Model
 {
-    /** @use HasFactory<CareEventTypeFactory> */
-    use HasFactory, HasUlids;
+    /** @use HasFactory<CareActionFactory> */
+    use HasFactory;
 
     /**
      * @return BelongsTo<User, $this>
@@ -25,11 +32,11 @@ class CareEventType extends Model
     }
 
     /**
-     * @return HasMany<CareEvent, $this>
+     * @return HasMany<CareLog, $this>
      */
-    public function careEvents(): HasMany
+    public function careLogs(): HasMany
     {
-        return $this->hasMany(CareEvent::class);
+        return $this->hasMany(CareLog::class);
     }
 
     /**

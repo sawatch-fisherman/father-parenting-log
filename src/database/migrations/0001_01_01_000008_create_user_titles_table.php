@@ -12,9 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_titles', function (Blueprint $table) {
-            $table->ulid('id')->primary();
+            // 連番。獲得済み称号に編集・削除の導線がなくIDがURL・APIに露出しない
+            // （docs/decisions.md §1.3「主キー形式の判断基準」）。
+            $table->id();
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignUlid('title_id')->constrained()->restrictOnDelete();
+            $table->foreignId('title_id')->constrained()->restrictOnDelete();
             $table->timestamp('unlocked_at');
             $table->timestamps();
 

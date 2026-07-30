@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\CareEventType;
+use App\Models\CareAction;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<CareEventType>
+ * @extends Factory<CareAction>
  */
-class CareEventTypeFactory extends Factory
+class CareActionFactory extends Factory
 {
     /**
      * モデルのデフォルト状態を定義する。

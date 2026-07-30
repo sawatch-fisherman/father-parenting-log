@@ -28,11 +28,11 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<CareEvent, $this>
+     * @return HasMany<CareLog, $this>
      */
-    public function careEvents(): HasMany
+    public function careLogs(): HasMany
     {
-        return $this->hasMany(CareEvent::class);
+        return $this->hasMany(CareLog::class);
     }
 
     /**

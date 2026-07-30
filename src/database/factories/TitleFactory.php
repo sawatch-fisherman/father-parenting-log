@@ -19,7 +19,7 @@ class TitleFactory extends Factory
     public function definition(): array
     {
         return [
-            'care_event_type_id' => null,
+            'care_action_id' => null,
             'name' => fake()->words(2, true),
             'condition_type' => TitleConditionType::Count,
             'condition_value' => fake()->numberBetween(1, 100),

@@ -2,15 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Models\CareEvent;
-use App\Models\CareEventType;
+use App\Models\CareAction;
+use App\Models\CareLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<CareEvent>
+ * @extends Factory<CareLog>
  */
-class CareEventFactory extends Factory
+class CareLogFactory extends Factory
 {
     /**
      * モデルのデフォルト状態を定義する。
@@ -21,7 +21,7 @@ class CareEventFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'care_event_type_id' => CareEventType::factory(),
+            'care_action_id' => CareAction::factory(),
             'occurred_at' => fake()->dateTimeBetween('-1 month'),
             'memo' => null,
         ];
