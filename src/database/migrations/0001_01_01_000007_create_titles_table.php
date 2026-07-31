@@ -17,6 +17,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('care_action_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('name', 50);
+            // 称号の段階（銅／銀／金）。`Lv.N`表記は使わず段階の表現をこの列に一本化する
+            // （docs/decisions.md §1.3「称号の提示順・等級・一覧表示」）。
+            $table->unsignedTinyInteger('grade');
             $table->unsignedTinyInteger('condition_type');
             $table->unsignedInteger('condition_value');
             $table->unsignedSmallInteger('sort_order')->default(0);

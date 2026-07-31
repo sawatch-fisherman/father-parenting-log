@@ -77,9 +77,10 @@ erDiagram
         bigint id PK
         bigint care_action_id FK "対象育児行動ID; nullable"
         varchar50 name "称号名"
+        tinyint grade "等級(銅/銀/金)"
         tinyint condition_type "条件種別"
         int condition_value "条件しきい値"
-        smallint sort_order "表示順"
+        smallint sort_order "提示順"
     }
     USER_TITLES["USER_TITLES（称号獲得履歴）"] {
         bigint id PK
@@ -209,7 +210,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 ## ⑤ `user_slot_configs`（設定）
 
-ユーザーが「常時表示8アイコン」にピン留めしている育児行動を管理する（[decisions.md](decisions.md) §1.3）。当初は「追加4スロットの管理」として構想していたが、8アイコン自体をユーザーが自由に選べる方式に変更したことに伴い、役割を「ピン留めされた最大8個の管理」に変更した（テーブル名は流用）。
+ユーザーが「常時表示8アイコン」にピン留めしている育児行動を管理する（[decisions.md](decisions.md) §1.3）。当初は「追加4スロットの管理」として構想していたが、8アイコン自体をユーザーが自由に選べる方式に変更したことに伴い、対象を「ピン留めされた最大8個」に広げた。**「どのスロット位置にどの育児行動を割り当てるか」という本テーブルの性質は設計変更の前後で変わっていないため、テーブル名はそのまま**（変更されたのはスロットの数と範囲だけで、名残の命名ではない）。
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
@@ -243,15 +244,27 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 | --- | --- | --- | --- |
 | `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主キー（連番。全ユーザー共通の公開マスタのため） |
 | `care_action_id` | BIGINT UNSIGNED | NULL, FK→`care_actions.id` ON DELETE RESTRICT | 対象育児行動（例：おむつ交換）。`NULL`は特定の育児行動に紐づかない全体合計称号 |
-| `name` | VARCHAR(50) | NOT NULL | 称号名（例：おむつ交換士 Lv.1） |
+| `name` | VARCHAR(50) | NOT NULL | 称号名（例：おむつ交換見習い）。**`Lv.1`のようなレベル表記は使わない**（段階は`grade`で表す。下記「`grade`の位置づけ」参照） |
+| `grade` | TINYINT UNSIGNED | NOT NULL | コード値。`App\Enums\TitleGrade: int` — `Bronze = 0`（銅） / `Silver = 1`（銀） / `Gold = 2`（金）。獲得の重みを表す表示属性（下記「`grade`の位置づけ」参照） |
 | `condition_type` | TINYINT UNSIGNED | NOT NULL | コード値。`App\Enums\TitleConditionType: int` — `Count = 0`（累計回数系） / `Streak = 1`（連続日数系） |
 | `condition_value` | INT UNSIGNED | NOT NULL | しきい値（`Count`なら累計回数、`Streak`なら連続日数） |
-| `sort_order` | SMALLINT UNSIGNED | NOT NULL DEFAULT 0 | 表示順 |
+| `sort_order` | SMALLINT UNSIGNED | NOT NULL DEFAULT 0 | **提示順**（TotoOpsが定める称号の並び順。下記「`sort_order`の位置づけ」参照） |
 | `created_at` / `updated_at` | TIMESTAMP | NOT NULL | |
 
 補足：
 
 - 称号条件は複合化しない。「回数系（Count）」と「日数系（Streak・連続継続）」は**両方とも MVP から実装**し、別々の称号として扱う（[decisions.md](decisions.md) §1.3）。1つの`titles`行は必ずどちらか一方の`condition_type`のみを持つ。
+- **`sort_order`の位置づけ**：「TotoOpsが定める称号の提示順」を表す唯一の並び順キー。用途は2つあり、いずれも**Seederが採番した値をそのまま`ORDER BY sort_order`で使う**（[decisions.md](decisions.md) §1.3「称号の提示順・等級・一覧表示」）。
+  1. **S5（称号獲得モーダル）の複数同時獲得時の表示順（MVPで必要）**：1件の`care_logs`登録で複数の称号が同時に成立しうる（例：「おむつ交換100回」「全体合計500回」「7日連続」）。`POST /care-logs`のレスポンスに載せる獲得称号の配列をこの順に並べる。
+  2. **Phase 2 の称号一覧（図鑑）画面の並び順**（[screens.md](screens.md)「称号一覧（図鑑）画面」）。
+  - `grade`・`care_action_id`・`condition_value`を`ORDER BY`に並べる方式は採らない。`sort_order`1本にしておくことで、演出上の並べ替え（例：全体称号を先頭に出す）をSeederの値の差し替えだけで実現でき、クエリ側を変更せずに済むため。
+- **`grade`の位置づけ**：Pokémon LEGENDS Z-A の称号システム（金・銀・銅の3等級。金ほど取得条件が厳しい）を参考にした、**称号の段階を表す唯一の表現**。称号バッジの色・図鑑での重みの可視化に使う。**並び順キーではない**（並びは`sort_order`が単独で決める）。
+  - **称号名に`Lv.1`／`Lv.5`のようなレベル表記は使わない**。段階の表現は`grade`に一本化し、称号名側は「見習い → 士 → マイスター」のように**名前そのもので成長を表す**。理由（育児の有限性との整合）は [decisions.md](decisions.md) §1.3「称号の提示順・等級・一覧表示」を参照。
+  - `condition_value`からの自動導出はしない。育児行動をまたぐと回数の意味が揃わないため（「おむつ交換50回」と「夜泣き対応50回」の重みは同じではない）、機械的に導出できず、称号ごとに明示的に指定する必要がある。
+  - `condition_type`とは独立。Count・Streak のどちらにも銅／銀／金が存在しうる（例：`3日連続育児ログ`＝銅、`7日連続おむつ交換`＝銀）。
+  - **カラム名を`rank`・`level`・`tier`にしない理由**：`rank`はMySQL 8.4の予約語（ウィンドウ関数`RANK()`）であり、かつ本プロジェクトの「人のランキングは作らない」という線引き（[concept.md](concept.md)）と語感が衝突する。`level`は上記のとおり称号名から廃したレベル表記を想起させる。`tier`は`App\Support\TitleId`の定数名`..._TIER1`（Seederの同一性キーとしての内部的な段階番号）と紛らわしい。`grade`（等級）はいずれとも衝突しない。
+  - `TitleId`の定数名（`..._TIER1`など）は**コード内部の同一性キー**でユーザーには見えないため、上記の一本化の対象外。`grade`は未決#4で変わりうるので、定数名を`..._GOLD`のように等級で構成すると等級を見直すたびに定数名まで書き換わり、`TitleId`が安定キーである意味が薄れる。
+  - どの称号をどの`grade`にするかは`condition_value`の設計と不可分なので、**未決#4（しきい値）と同時に確定する**。Seederの現在値は暫定で、**各系統（`care_action_id` × `condition_type`）の最終段階＝金／最初の段階＝銅／中間＝銀**という仮ルールで置いている（段階が1つしかない系統は、後から上下を足す余地を残して暫定的に銀）。
 - `Streak`は専用の集計テーブル・カラムを持たず、**都度動的に計算**する：判定対象範囲（`care_action_id`がNULLなら全育児行動、値ありならその育児行動のみ）で`care_logs.occurred_at`のDISTINCTな日付（JST暦日）を新しい順に取得し、直近保存した育児ログの日付を起点に連続日数を数える（[decisions.md](decisions.md) §1.3）。
 - `condition_type`は`age_group`等と同じ「コード値とラベルの分離」方針に従う（[decisions.md](decisions.md) §1.3）。日本語ラベル（「累計回数」「連続日数」）はPHPの`label()`側にのみ持つ。
 - `care_action_id`をNULL許容にしているのは、育児行動限定の称号（おむつ交換士など）に加えて、将来「全育児行動の合計◯件達成」のような全体合計称号も作れるようにするため。
@@ -263,7 +276,9 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 ## ⑦ `user_titles`（ログ寄り）
 
-ユーザーがどの称号をいつ獲得したかを記録する。
+ユーザーがどの称号をいつ獲得したかを記録する。**行が作られるのは称号を獲得した瞬間のみ**で、未獲得ぶんの行はあらかじめ作らない（ユーザー登録時に`titles`の全行ぶんの`user_titles`を先行作成する方式は採らない）。
+
+そのため、称号一覧（図鑑）画面で未獲得の称号を表示する場合も本テーブルの行数は増えない。`titles`（全ユーザー共通マスタ）を主テーブルにした`LEFT JOIN`で「未獲得＝`user_titles`側がNULL」として表現する（[screens.md](screens.md)「称号一覧（図鑑）画面」）。
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |

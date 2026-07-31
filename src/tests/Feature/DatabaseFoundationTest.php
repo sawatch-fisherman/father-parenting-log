@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TitleConditionType;
+use App\Enums\TitleGrade;
 use App\Models\CareAction;
 use App\Models\CareLog;
 use App\Models\Profile;
@@ -32,6 +33,19 @@ class DatabaseFoundationTest extends TestCase
 
         $this->assertGreaterThan(0, Title::query()->where('condition_type', TitleConditionType::Count)->count());
         $this->assertGreaterThan(0, Title::query()->where('condition_type', TitleConditionType::Streak)->count());
+    }
+
+    public function test_title_grade_round_trips_as_an_enum_and_never_uses_level_notation(): void
+    {
+        $this->seed();
+
+        $this->assertInstanceOf(
+            TitleGrade::class,
+            Title::query()->findOrFail(TitleId::DIAPER_CHANGE_COUNT_TIER2)->grade,
+        );
+
+        // 段階の表現は`grade`に一本化する（docs/decisions.md §1.3「称号の提示順・等級・一覧表示」）。
+        $this->assertSame(0, Title::query()->where('name', 'like', '%Lv.%')->count());
     }
 
     public function test_standard_master_rows_keep_their_fixed_ids(): void

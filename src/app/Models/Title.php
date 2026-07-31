@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TitleConditionType;
+use App\Enums\TitleGrade;
 use Database\Factories\TitleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['care_action_id', 'name', 'condition_type', 'condition_value', 'sort_order'])]
+#[Fillable(['care_action_id', 'name', 'grade', 'condition_type', 'condition_value', 'sort_order'])]
 class Title extends Model
 {
     /** @use HasFactory<TitleFactory> */
@@ -22,6 +23,7 @@ class Title extends Model
     protected function casts(): array
     {
         return [
+            'grade' => TitleGrade::class,
             'condition_type' => TitleConditionType::class,
         ];
     }
