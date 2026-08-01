@@ -11,6 +11,7 @@
 - **依存順に並べる（番号順 ≠ 依存順）**：features.md の機能一覧・screens.md の S1〜S13 は**トピック順・画面遷移順であって「作れる順」ではない**。ここでは実際の構築依存に従って並べ替える。
 - **基盤（M0）を先頭に固定**：features.md・screens.md には現れないが、8テーブル・Enum・Seeder といった土台（[decisions.md](decisions.md) §1.3）が全画面の前提になるため、最初に横切りで一括構築する（テーブル群が FK で相互に絡み分割しづらいため、ここだけは例外的に横切り）。
 - **多言語化の規律（全スライス共通）**：M0 で i18n 基盤（軽量版）を敷いた後は、**各スライスで画面の文字列を直書きせず `t('key')` 経由にし、対応するキーを `lang/ja/*` に追加する**（[decisions.md](decisions.md) §1.3）。英訳（`lang/en/*`）は未投入でよく、`fallback_locale = ja` で日本語表示になる（英訳時期は未決 #18）。
+- **マスアサインメントの規律（全スライス共通）**：`CareLog`／`Profile`／`UserSlotConfig`／`UserTitle` は `user_id` を fillable に含む（Factory がマスアサインメント経由で生成するため）。Controller から書き込む際は `Model::create($request->validated())` を使わず、必ず `$request->user()->careLogs()->create(...)` のようにリレーション経由で作成し、`user_id` をリクエスト起因の値で埋められないようにする（M2 の `ProfileController`、M4 の `CareLogController`、M5 の `TitleGrantService`、M8 の設定画面で対象）。
 - **各スライス共通の Definition of Done（DoD）**：
   - `composer check`（`pint` → `phpstan`(level 8) → `test`）が green
   - Feature テスト中心に happy / failure / edge を網羅（[src/CLAUDE.md](../src/CLAUDE.md) 準拠）

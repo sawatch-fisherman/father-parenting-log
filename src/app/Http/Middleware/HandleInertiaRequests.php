@@ -87,6 +87,10 @@ class HandleInertiaRequests extends Middleware
         $messages = [];
 
         foreach (File::files($path) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
             $loaded = require $file->getPathname();
 
             $messages[$file->getFilenameWithoutExtension()] = is_array($loaded) ? $loaded : [];

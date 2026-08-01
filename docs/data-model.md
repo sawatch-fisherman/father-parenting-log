@@ -64,7 +64,7 @@ erDiagram
         char26 id PK "ULID"
         char26 user_id FK, UK "ユーザーID; 複合INDEXにも参加: (user_id,occurred_at)"
         bigint care_action_id FK, UK "育児行動ID"
-        datetime3 occurred_at UK "実施日時; 複合INDEXにも参加: (user_id,occurred_at)"
+        datetime occurred_at UK "実施日時; 複合INDEXにも参加: (user_id,occurred_at)"
         varchar255 memo "メモ"
     }
     USER_SLOT_CONFIGS["USER_SLOT_CONFIGS（ピン留め設定）"] {

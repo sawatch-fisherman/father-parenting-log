@@ -27,6 +27,8 @@ docs/research.md
 CLAUDE.md
 prompts/
 .claude/
+.mcp.json
+src/.mcp.json
 
 # src/配下はLaravel Boostが生成する共有ガイド・スキルのため追跡対象に戻す
 !src/CLAUDE.md
