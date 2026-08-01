@@ -52,7 +52,7 @@ erDiagram
         char26 user_id FK, UK "ユーザーID"
         varchar50 nickname "ニックネーム"
         tinyint age_group "年代"
-        tinyint child_age_group "子どもの年齢帯"
+        tinyint child_age_group "子どもの年齢帯(末子)"
     }
     CARE_ACTIONS["CARE_ACTIONS（育児行動）"] {
         bigint id PK "1〜999はTotoOps標準行の予約域"
@@ -140,7 +140,7 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
 | `user_id` | CHAR(26) | NOT NULL, UNIQUE, FK→`users.id` ON DELETE CASCADE | 1ユーザー1プロフィール |
 | `nickname` | VARCHAR(50) | NOT NULL | 表示名。文字数上限は暫定 |
 | `age_group` | TINYINT UNSIGNED | NOT NULL | コード値。`App\Enums\AgeGroup`（int backed enum）に対応（[decisions.md](decisions.md) §1.1 で候補1採用を確定）。任意項目だが「未回答」を明示コード値（`Unanswered = 0`）として持つ |
-| `child_age_group` | TINYINT UNSIGNED | NOT NULL | コード値。`App\Enums\ChildAgeGroup`（int backed enum）に対応。任意項目だが「未回答」を明示コード値（`Unanswered = 0`）として持つ（`age_group` と同じパターンで統一） |
+| `child_age_group` | TINYINT UNSIGNED | NOT NULL | **いちばん下の子（末子）の年齢帯**。コード値で`App\Enums\ChildAgeGroup`（int backed enum）に対応。任意項目だが「未回答」を明示コード値（`Unanswered = 0`）として持つ（`age_group` と同じパターンで統一） |
 | `created_at` | TIMESTAMP | NOT NULL | |
 | `updated_at` | TIMESTAMP | NOT NULL | |
 
@@ -149,7 +149,8 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
   - `App\Enums\AgeGroup: int` — `Unanswered = 0`（未回答） / `Twenties = 1`（20代） / `Thirties = 2`（30代） / `Forties = 3`（40代） / `FiftiesOrOver = 4`（50代以上）
   - `App\Enums\ChildAgeGroup: int` — `Unanswered = 0`（未回答） / `Zero = 1`（0歳） / `One = 2`（1歳） / `Two = 3`（2歳） / `Three = 4`（3歳） / `FourToSix = 5`（4〜6歳）
 - `age_group`・`child_age_group` はいずれも `NOT NULL` とし、「未回答」を `Unanswered = 0` という明示コード値で統一的に表現する（`NULL` は使わない）。理由：(1) 集計（`GROUP BY`等）で `NULL` 専用の分岐が不要になる、(2) 両カラムとも「任意項目・未選択ならUnanswered」という同一パターンで扱え、`age_group`だけ特別扱いする必要がない。未選択時に`Unanswered`を設定する処理は、両カラムとも同じバリデーション層のロジックで担保する（DB制約上の必須・任意の違いは持たない）。
-- 都道府県・子どもの氏名／誕生日／月齢・顔写真・本名は取得しない（[privacy.md](privacy.md) §5）。
+- **`child_age_group` は「いちばん下の子（末子）の年齢帯」で、子どもが複数いる世帯でも1値のみを保持する**（[decisions.md](decisions.md) §1.1 で確定）。複数の年齢帯を持つ中間テーブル（`profile_child_age_groups`）化や、`profiles` に子どもの人数・きょうだい有無を持たせる案は不採用：集計軸は1ユーザー1値のほうが母数＝ユーザー数と一致して解釈が単純であり、組み合わせを持たせると「粗い分類」という個人特定リスク低減の方針を無効化してしまうため。なお `care_logs`（④）は「どの子への行動か」を一切参照しないため子ども情報は本テーブルに閉じており、将来複数対応が必要になった場合も本テーブル側の変更だけで完結する（ログ側へ波及しない）。
+- 都道府県・子どもの氏名／誕生日／月齢・顔写真・人数／きょうだい構成・本名は取得しない（[privacy.md](privacy.md) §5）。
 - **表示言語（ロケール）は `profiles` に持たない**：日英切り替えは cookie 保持で実現し、DB スキーマは変更しない（MVP は多言語化の“構造”のみ組み込む軽量版。[decisions.md](decisions.md) §1.3、永続化の要否は未決 #19）。
 
 ---

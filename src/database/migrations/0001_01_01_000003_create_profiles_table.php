@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignUlid('user_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('nickname', 50);
             $table->unsignedTinyInteger('age_group');
+            // 子どもが複数いる場合も「いちばん下の子（末子）」の年齢帯1つのみを持つ
+            // （docs/decisions.md §1.1）。
             $table->unsignedTinyInteger('child_age_group');
             $table->timestamps();
         });

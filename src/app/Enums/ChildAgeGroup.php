@@ -2,6 +2,12 @@
 
 namespace App\Enums;
 
+/**
+ * 子どもの年齢帯。
+ *
+ * 子どもが複数いる場合も「いちばん下の子（末子）」の年齢帯1つのみを保持する
+ * （複数選択・子どもごとの管理は採用しない。docs/decisions.md §1.1）。
+ */
 enum ChildAgeGroup: int
 {
     case Unanswered = 0;

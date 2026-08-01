@@ -108,6 +108,7 @@ flowchart TD
   - [ ] `store` 時に `config/totoops.php` の初期8個から `user_slot_configs` に8行を作成（[data-model.md](data-model.md) ⑤、[decisions.md](decisions.md) §1.3）
   - [ ] Policy 不要（ID を URL に含めず常に自分のプロフィールを操作。[screens.md](screens.md) Controller構成の補足）
   - [ ] Vue：`Pages/Profile/Register.vue`（S2）、`Pages/Settings/ProfileEdit.vue`（S8。閲覧も兼ねる）
+    - **`child_age_group` のラベルは「いちばん下のお子さんの年齢帯」とし、セレクトの下に「お子さんが複数いる場合は、いちばん下のお子さんを選んでください」という補足文を常時表示する**（多子世帯が迷わないための担保。単一選択で確定済み。[decisions.md](decisions.md) §1.1、[wireframes.md](wireframes.md) S2・S8）。文言は `lang/ja` のキーとして追加する
   - [ ] **`EnsureProfileIsComplete` ミドルウェア**：`$request->user()->profile()->exists()`（`profiles.user_id` の `UNIQUE` インデックスを使った存在確認）が `false` なら `profile.register` へリダイレクト。`auth` 系ルート全体に適用し、`profile.register`・`profile.store`・`logout`・`locale.update` は対象外にする（無限リダイレクト防止）。ログイン直後の callback 分岐（M1）だけでなく、プロフィール未登録のまま `/` 等へ直接アクセスした場合もこのミドルウェアで防ぐ
 - **テスト観点**：profile 作成＋slot 8行生成、`nickname` 必須バリデーション、未選択時 `Unanswered`、更新、プロフィール未登録ユーザーが `/` 等へ直接アクセスすると `profile.register` へリダイレクトされる。
 - **完了条件**：DoD ＋ 登録後に S3 が「8アイコン表示可能な状態」になる。
