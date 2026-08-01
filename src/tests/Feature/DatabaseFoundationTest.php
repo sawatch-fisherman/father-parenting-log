@@ -27,6 +27,25 @@ class DatabaseFoundationTest extends TestCase
         $this->assertSame(17, CareAction::query()->whereNull('user_id')->count());
     }
 
+    /**
+     * TotoOps標準17行の`sort_order`が`1`〜`17`の重複なし連番であることを検証する。
+     *
+     * カテゴリ順に並べ替えた結果`id`の昇順とは一致しなくなるが、採番自体は詰まっている必要がある
+     * （ユーザーカスタム行は`18`から続けて採番するため。docs/data-model.md ③）。
+     */
+    public function test_standard_care_actions_are_numbered_as_a_gapless_sort_order(): void
+    {
+        $this->seed();
+
+        $sortOrders = CareAction::query()
+            ->whereNull('user_id')
+            ->orderBy('sort_order')
+            ->pluck('sort_order')
+            ->all();
+
+        $this->assertSame(range(1, 17), $sortOrders);
+    }
+
     public function test_seeding_creates_both_count_and_streak_titles(): void
     {
         $this->seed();

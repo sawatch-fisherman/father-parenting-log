@@ -63,7 +63,7 @@ flowchart TD
     - **`personal_access_tokens` / Sanctum は作らない（後述「横断事項」の先送り方針）**
   - [x] Model（リレーション・Enum cast。`HasUlids` は `User` と `CareLog` のみ）：`User` / `Profile` / `CareAction` / `CareLog` / `UserSlotConfig` / `Title` / `UserTitle`
   - [x] **`App\Support\CareActionId`（固定ID定数クラス）**：TotoOps標準17行の固定ID（`1`〜`17`）と、カスタム行の採番開始値`CUSTOM_ID_FLOOR = 1000`を名前付き定数（例：`DIAPER_CHANGE`）として定義（[decisions.md](decisions.md) §1.3「ID／主キーの形式」例外規定、[data-model.md](data-model.md) ③）
-  - [x] Seeder：`CareActionSeeder`（`user_id IS NULL` の17行。**`CareActionId` 定数で `id`（`1`〜`17`）を明示指定**して作成（保存前に `incrementing = false`）。`sort_order` 1〜17。候補プールは [features.md](features.md)「育児行動一覧」）／`TitleSeeder`（**Count・Streak 両方の `condition_type` を投入。対象の育児行動は `CareActionId` 定数で指定し `name` 文字列一致には依存しない。しきい値は未決 #4 → 暫定値＋`// TODO`**。[decisions.md](decisions.md) §1.3）
+  - [x] Seeder：`CareActionSeeder`（`user_id IS NULL` の17行。**`CareActionId` 定数で `id`（`1`〜`17`）を明示指定**して作成（保存前に `incrementing = false`）。`sort_order` 1〜17は [features.md](features.md)「育児行動一覧」のカテゴリ順で採番＝`id` の昇順とは一致しない）／`TitleSeeder`（**84行。Count・Streak 両方の `condition_type` を投入し、全17育児行動に銅・銀・金を揃える。対象の育児行動は `CareActionId` 定数で指定し `name` 文字列一致には依存しない。称号名・等級・しきい値は確定済み**。[decisions.md](decisions.md) §1.3・[features.md](features.md)「称号一覧」）
   - [x] Factory（テスト用。各 Model。`CareAction` ファクトリはユーザーカスタム用途のため自動採番のまま＝予約域より上に採番される）
   - [x] `config/totoops.php`：登録時に自動ピン留めする「初期おすすめ8個」を **`CareActionId` 定数の配列**で指定（`name` ではなく固定IDを直接参照。**未決 #11 → 暫定リスト＋TODO**。[decisions.md](decisions.md) §1.3）
   - [x] **i18n 基盤（軽量版・依存追加なし。[decisions.md](decisions.md) §1.3）**：
@@ -75,7 +75,7 @@ flowchart TD
     - `lang/ja/`（`nav.php`・`validation.php` 等の骨組み。各画面のキーは以降のスライスで追加）
 - **テスト観点**：`migrate:fresh --seed` 成功、`care_logs` のユニーク制約が効く、Enum cast の往復、`POST /locale` で cookie が変わり `App::getLocale()` が切り替わる。
 - **完了条件**：`migrate:fresh --seed` が通る／`composer check` green／ロケール切り替えが効く。
-- **ブロッカー**：未決 #4（称号しきい値）・#11（初期8個）は**暫定値で着手可**、確定後に差し替え。i18n は英訳未投入でも `fallback_locale = ja` で日本語表示になるため着手可（英訳時期は未決 #18）。
+- **ブロッカー**：未決 #11（初期8個）は**暫定値で着手可**、確定後に差し替え。i18n は英訳未投入でも `fallback_locale = ja` で日本語表示になるため着手可（英訳時期は未決 #18）。
 
 ---
 
@@ -162,7 +162,7 @@ flowchart TD
   - [ ] `user_titles` は永久保持（`care_logs` 編集・削除で再判定・取り消しをしない。Streak も同様。[decisions.md](decisions.md) §1.3）
 - **テスト観点**：Count・Streak それぞれでしきい値到達時に付与、二重付与なし、レスポンスに獲得称号（`name`・`achievement_text`）が含まれる、4パターンそれぞれで `achievement_text` の文面が正しい、既取得は再付与しない、Streak は記録が1日途切れると連続日数がリセットされる、バックデート入力（S10）でも起点日から正しく連続日数を数える。
 - **完了条件**：DoD ＋ 記録→称号獲得（Count・Streak 双方）→X投稿文コピーの流れが動く。
-- **ブロッカー**：未決 #4（しきい値の具体値）。判定ロジック・構造は確定・実装可、数値のみ暫定。
+- **ブロッカー**：なし（称号名・等級・しきい値は確定済み。[decisions.md](decisions.md) §1.3「称号名・等級・しきい値の確定内容」）。
 
 ---
 

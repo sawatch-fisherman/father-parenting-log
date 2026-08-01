@@ -1,0 +1,123 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\TitleConditionType;
+use App\Enums\TitleGrade;
+use App\Models\CareAction;
+use App\Models\Title;
+use App\Support\TitleId;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Collection;
+use ReflectionClass;
+use Tests\TestCase;
+
+/**
+ * `TitleSeeder`が投入する称号マスタの構造的な整合性を検証する。
+ *
+ * 称号は育児行動ごとに銅・銀・金の3段階を必ず揃える設計なので、育児行動を追加したのに
+ * 称号を足し忘れる／等級としきい値の対応が逆転する、といった崩れをここで検知する。
+ *
+ * @see docs/decisions.md §1.3「称号の提示順・等級・一覧表示」
+ */
+class TitleSeedIntegrityTest extends TestCase
+{
+    use LazilyRefreshDatabase;
+
+    public function test_every_standard_care_action_has_bronze_silver_and_gold_count_titles(): void
+    {
+        $this->seed();
+
+        $careActions = CareAction::query()->whereNull('user_id')->get();
+
+        $this->assertCount(17, $careActions);
+
+        foreach ($careActions as $careAction) {
+            foreach (TitleGrade::cases() as $grade) {
+                $this->assertSame(1, Title::query()
+                    ->where('care_action_id', $careAction->id)
+                    ->where('condition_type', TitleConditionType::Count)
+                    ->where('grade', $grade)
+                    ->count(), "「{$careAction->name}」に{$grade->label()}のCount称号がちょうど1件ない");
+            }
+        }
+    }
+
+    /**
+     * 等級は`condition_value`から自動導出しない独立した列なので、両者が逆転していても
+     * DBは受け付けてしまう（docs/data-model.md ⑥）。系統ごとに 銅 < 銀 < 金 の順で
+     * しきい値が上がることをここで担保する。
+     */
+    public function test_thresholds_increase_with_grade_within_each_series(): void
+    {
+        $this->seed();
+
+        /** @var Collection<string, Collection<int, Title>> $series */
+        $series = Title::query()->get()->groupBy(fn (Title $title): string => sprintf(
+            '%s/%d',
+            $title->care_action_id ?? 'overall',
+            $title->condition_type->value,
+        ));
+
+        foreach ($series as $key => $titles) {
+            $thresholds = $titles
+                ->sortBy(fn (Title $title): int => $title->grade->value)
+                ->pluck('condition_value')
+                ->all();
+
+            $ascending = $thresholds;
+            sort($ascending);
+
+            $this->assertSame($ascending, $thresholds, "系統 {$key} で等級としきい値の並びが逆転している");
+            $this->assertSame(count($thresholds), count(array_unique($thresholds)), "系統 {$key} でしきい値が重複している");
+        }
+    }
+
+    /**
+     * `TitleId`の定数と実際に投入される行が1対1であることを検証する。
+     *
+     * 定数を足したのにSeederへ書き忘れる／定数値を重複させる、といった取りこぼしを検知する。
+     */
+    public function test_every_title_id_constant_is_seeded_exactly_once(): void
+    {
+        $this->seed();
+
+        $ids = array_values(array_map(
+            static fn (mixed $value): int => (int) $value,
+            (new ReflectionClass(TitleId::class))->getConstants(),
+        ));
+
+        $this->assertSame(count($ids), count(array_unique($ids)), 'TitleId の定数値に重複がある');
+        $this->assertSame(count($ids), Title::query()->count(), 'TitleId の定数と titles の行数が一致していない');
+        $this->assertSame(count($ids), Title::query()->whereIn('id', $ids)->count(), 'TitleId の定数に対応しない称号行がある');
+    }
+
+    /**
+     * Count系の称号名は「見習い→職人→名人」の接尾辞と等級が1対1に対応する。
+     *
+     * 称号名だけで等級が読み取れる状態を保つための検証（docs/features.md「称号一覧」）。
+     * Streak系は「{日数表記}連続{短縮ラベル}」の別書式なので対象外。
+     */
+    public function test_count_title_names_end_with_the_suffix_of_their_grade(): void
+    {
+        $this->seed();
+
+        $suffixes = [
+            TitleGrade::Bronze->value => '見習い',
+            TitleGrade::Silver->value => '職人',
+            TitleGrade::Gold->value => '名人',
+        ];
+
+        $titles = Title::query()->where('condition_type', TitleConditionType::Count)->get();
+
+        $this->assertNotEmpty($titles);
+
+        foreach ($titles as $title) {
+            $this->assertStringEndsWith(
+                $suffixes[$title->grade->value],
+                $title->name,
+                "称号「{$title->name}」の接尾辞が等級（{$title->grade->label()}）と対応していない",
+            );
+        }
+    }
+}
