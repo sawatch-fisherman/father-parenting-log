@@ -56,7 +56,7 @@ flowchart TD
   - [x] Enum（int backed・`label()` を持つ）：`App\Enums\AgeGroup` / `App\Enums\ChildAgeGroup` / `App\Enums\TitleConditionType`（[data-model.md](data-model.md) ②⑥、[decisions.md](decisions.md) §1.3「コード値とラベルの分離」）
   - [x] マイグレーション（**MVPは7テーブル**。`users`・`care_logs` のみ ULID `CHAR(26)` 主キー、他は連番。[decisions.md](decisions.md) §1.3）：`users` / `profiles` / `care_actions` / `care_logs` / `user_slot_configs` / `titles` / `user_titles`
     - **`users` は既存スキャフォールドの `0001_01_01_000000_create_users_table.php` を直接書き換える（新規マイグレーションで後から ALTER しない）**：`migrate` 実行実績のない greenfield 状態のため、`name`/`email`/`email_verified_at`/`password` カラムと `password_reset_tokens` テーブル定義を削除し、`id` を ULID 化（露出こそしないが将来の API 露出に備えた保険。[decisions.md](decisions.md) §1.3）、`provider`/`provider_id`（`UNIQUE(provider, provider_id)`）を追加。`remember_token` と `sessions` テーブルはそのまま残す（セッション認証で使用。[data-model.md](data-model.md) ①）
-    - `care_logs`：`UNIQUE(user_id, care_action_id, occurred_at)`（二重送信防止）、`INDEX(user_id, occurred_at)`、`occurred_at DATETIME(3)`。単独の `INDEX(user_id, care_action_id)` は上記UNIQUEの左端プレフィックスで賄えるため張らない（[data-model.md](data-model.md) ④）
+    - `care_logs`：`UNIQUE(user_id, care_action_id, occurred_at)`（二重送信防止）、`INDEX(user_id, occurred_at)`、`occurred_at DATETIME`（秒精度）。単独の `INDEX(user_id, care_action_id)` は上記UNIQUEの左端プレフィックスで賄えるため張らない（[data-model.md](data-model.md) ④）
     - `user_slot_configs`：`UNIQUE(user_id, slot_position)`、`UNIQUE(user_id, care_action_id)`
     - `care_actions`：マイグレーション内で `AUTO_INCREMENT` を `CareActionId::CUSTOM_ID_FLOOR`（`1000`）に引き上げ、標準17行用に `1`〜`999` を予約する（[decisions.md](decisions.md) §1.3）
     - FK の `ON DELETE` 方針は data-model.md 各節に従う（`care_action_id`→`care_logs` は CASCADE、`titles`/`user_titles` の `title_id` は RESTRICT 等）
@@ -137,7 +137,7 @@ flowchart TD
 - **タスク**：
   - [ ] `CareLogController`（`create`＝S10 / `store`＝共通登録）、`StoreCareLogRequest`（`care_action_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at <= now() + 5分` の上限バリデーション**を含む。[decisions.md](decisions.md) §1.3）
   - [ ] `CareActionController@other`（`GET /care-actions/other`＝S4）：`user_slot_configs` に無い残りの育児行動を返す（MVP は17個中9個）
-  - [ ] `POST /care-logs`：**クライアントが `occurred_at`（ミリ秒精度）を必ず送信**。`UNIQUE(user_id, care_action_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
+  - [ ] `POST /care-logs`：**クライアントが `occurred_at`（秒精度）を必ず送信**。`UNIQUE(user_id, care_action_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
   - [ ] Vue：S3短タップ＝タップ時刻送信＋送信中ボタン disable／長押し→S10。`Pages/CareLogs/Create.vue`（S10・日時指定）、`Pages/CareActions/Other.vue`（S4）
   - [ ] 称号判定はこのスライスでは空配列スタブ（M5 で実装）
 - **テスト観点**：1レコード作成、同一 `occurred_at` の二重送信ブロック、「その他」一覧がピン留め8個を除外、S10 分精度の衝突エラー、`occurred_at` 省略時の `now()` フォールバック、`now() + 5分` を超える未来日時が拒否される、`now() + 5分` 以内は許容される。

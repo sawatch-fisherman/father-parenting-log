@@ -188,7 +188,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 | `id` | CHAR(26) | PK | ULID。`/care-logs/{care_log}`としてURLに露出するため（[decisions.md](decisions.md) §1.3） |
 | `user_id` | CHAR(26) | NOT NULL, FK→`users.id` ON DELETE CASCADE | 記録した本人 |
 | `care_action_id` | BIGINT UNSIGNED | NOT NULL, FK→`care_actions.id` ON DELETE CASCADE | 育児行動。カスタム育児行動の物理削除時は本テーブルの該当行も道連れ削除（③参照） |
-| `occurred_at` | DATETIME(3) | NOT NULL | 実施日時（ミリ秒まで記録。将来の時間帯別タイムラインチャート用） |
+| `occurred_at` | DATETIME | NOT NULL | 実施日時（秒精度。将来の時間帯別タイムラインチャート用。サブ秒は書き込み時に切り捨てる） |
 | `memo` | VARCHAR(255) | NULL | 任意メモ |
 | `created_at` / `updated_at` | TIMESTAMP | NOT NULL | |
 
@@ -201,7 +201,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 - `count`・`duration_minutes`・`hp_delta`は持たない（[decisions.md](decisions.md) §1.3・§1.6）。1回の行動＝1行で記録し、回数は`COUNT(*)`で数える。
 - 集計（累計実績・タイムライン・Phase 2の全体傾向）は`care_action_id`でグルーピングする。`care_actions.name`は表示専用で、集計ロジックには登場しない。
-- 二重送信防止の`UNIQUE(user_id, care_action_id, occurred_at)`を機能させるため、**短タップ（即時記録）でもクライアントがタップ時点のタイムスタンプ（ミリ秒精度）を`occurred_at`として必ず送信する**（サーバー採番の`now()`だとリクエストごとに値が変わり、同一操作のリトライ・二度発火を弾けない。`occurred_at`省略時の`now()`はフォールバックであり正規クライアントは使わない）。合わせてクライアント側は送信中の送信ボタンをdisableする（[decisions.md](decisions.md) §1.3）。
+- 二重送信防止の`UNIQUE(user_id, care_action_id, occurred_at)`を機能させるため、**短タップ（即時記録）でもクライアントがタップ時点のタイムスタンプを`occurred_at`として必ず送信する**（サーバー採番の`now()`だとリクエストごとに値が変わり、同一操作のリトライ・二度発火を弾けない。`occurred_at`省略時の`now()`はフォールバックであり正規クライアントは使わない）。合わせてクライアント側は送信中の送信ボタンをdisableする。`occurred_at`は秒精度で保存しサブ秒は切り捨てるため、disableが間に合わなかった同一秒内の連打もこのUNIQUE制約で弾ける（[decisions.md](decisions.md) §1.3）。
 - S10（実施日時指定画面）は分精度入力のため、既存記録と「育児行動×日時」が衝突した場合は「同じ日時に同じ記録があります」という分かりやすいバリデーションエラーを返す（同一分に同じ育児行動を2回記録したい場合は、1分ずらして登録する運用を許容する）。
 - **`occurred_at`の上限バリデーション**：`occurred_at <= now() + 5分`をアプリ層（FormRequest）で検証する（DB制約ではない）。育児記録は過去の行動を記録するものであり未来日時は原則無意味だが、短タップ（即時記録）はクライアント端末のタイムスタンプをそのまま送信するため、端末クロックのわずかなズレ（自動時刻同期OFFの端末・安価な端末のドリフト等）で正当な「今記録した」操作が誤って弾かれないよう、5分の許容バッファを持たせる（[decisions.md](decisions.md) §1.3）。
 - **事後編集は`occurred_at`のみ許可**。`care_action_id`の変更は不可とし、育児行動を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_action_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。

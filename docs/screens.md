@@ -124,7 +124,7 @@ flowchart TD
 | Method | URI | ルート名 | 用途 | 備考 |
 |---|---|---|---|---|
 | POST | `/profile` | `profile.store` | S2の登録処理 | 完了後`/`（S3）へリダイレクト |
-| POST | `/care-logs` | `care-logs.store` | 育児ログ記録 | S3短タップ／S10保存の共通エンドポイント。クライアントは短タップ時もタップ時刻（ミリ秒精度）を`occurred_at`として送信する（省略時の`now()`は二重送信防止が効かないフォールバック。[decisions.md](decisions.md) §1.3） |
+| POST | `/care-logs` | `care-logs.store` | 育児ログ記録 | S3短タップ／S10保存の共通エンドポイント。クライアントは短タップ時もタップ時刻（秒精度）を`occurred_at`として送信する（省略時の`now()`は二重送信防止が効かないフォールバック。[decisions.md](decisions.md) §1.3） |
 | PATCH | `/care-logs/{care_log}` | `care-logs.update` | S11保存 | `occurred_at`のみ変更可 |
 | DELETE | `/care-logs/{care_log}` | `care-logs.destroy` | S11削除 | |
 | PATCH | `/settings/profile` | `settings.profile.update` | S8保存 | |

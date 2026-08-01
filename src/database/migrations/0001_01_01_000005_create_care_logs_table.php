@@ -18,7 +18,7 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('care_action_id')->constrained()->cascadeOnDelete();
-            $table->dateTime('occurred_at', precision: 3);
+            $table->dateTime('occurred_at');
             $table->string('memo', 255)->nullable();
             $table->timestamps();
 

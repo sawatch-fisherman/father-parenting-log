@@ -19,21 +19,12 @@ class CareLog extends Model
     use HasFactory, HasUlids;
 
     /**
-     * `occurred_at` はミリ秒までのフォーマットを明示する。
-     *
-     * 素の `datetime` キャストだと書き込み時にグラマ既定の `Y-m-d H:i:s` が使われ、
-     * カラムが `DATETIME(3)` でもミリ秒が切り捨てられてしまう。二重送信防止の
-     * `UNIQUE(user_id, care_action_id, occurred_at)` はクライアントが送るミリ秒精度の
-     * タイムスタンプが前提のため、秒に丸まると同一秒内の正当な2件目まで弾いてしまう。
-     *
-     * @see docs/data-model.md ④ `care_logs`
-     *
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'occurred_at' => 'datetime:Y-m-d H:i:s.v',
+            'occurred_at' => 'datetime',
         ];
     }
 
