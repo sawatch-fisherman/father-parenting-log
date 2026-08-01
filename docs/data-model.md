@@ -252,6 +252,13 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 | `sort_order` | SMALLINT UNSIGNED | NOT NULL DEFAULT 0 | **提示順**（TotoOpsが定める称号の並び順。下記「`sort_order`の位置づけ」参照） |
 | `created_at` / `updated_at` | TIMESTAMP | NOT NULL | |
 
+制約・インデックス：
+
+- `UNIQUE (care_action_id, condition_type, condition_value)` — 同一系統（`care_action_id` × `condition_type`）内でのしきい値の重複を防ぐ。称号一覧（図鑑）は各系統につき**未獲得の最小しきい値1件**だけを見せる（[decisions.md](decisions.md) §1.3）ため、系統内でしきい値が重複すると表示対象が一意に定まらなくなる。
+  - **全体合計称号（`care_action_id IS NULL`）はこの制約の対象外**：MySQLはUNIQUE内のNULL同士を別物として扱うため、`NULL`の行は何件でも通ってしまう（③`care_actions`の`name`と同じ制限）。`titles`はSeeder固定マスタでユーザー入力が入らないため、この穴はDB制約ではなくテスト（`TitleUniqueConstraintTest`）でSeeder投入値を検証する形で塞ぐ。
+  - `grade`はこのキーに含めない。表示属性であって称号の同一性を持たず、未決#4の再設計で「1系統に銀を2つ」が必要になる余地を残すため（下記「`grade`の位置づけ」参照）。
+  - `name`にはUNIQUEを張らない。下記「`id`の採番規則」が「`name`は非ユニークだからSeederの同一性キーに使えない」という前提で組み立てられており、そこと矛盾させないため。称号名の重複はSeederのレビューで防ぐ。
+
 補足：
 
 - 称号条件は複合化しない。「回数系（Count）」と「日数系（Streak・連続継続）」は**両方とも MVP から実装**し、別々の称号として扱う（[decisions.md](decisions.md) §1.3）。1つの`titles`行は必ずどちらか一方の`condition_type`のみを持つ。
@@ -270,6 +277,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 - `condition_type`は`age_group`等と同じ「コード値とラベルの分離」方針に従う（[decisions.md](decisions.md) §1.3）。日本語ラベル（「累計回数」「連続日数」）はPHPの`label()`側にのみ持つ。
 - `care_action_id`をNULL許容にしているのは、育児行動限定の称号（おむつ交換士など）に加えて、将来「全育児行動の合計◯件達成」のような全体合計称号も作れるようにするため。
 - `titles`はユーザー個別ではなく全ユーザー共通のマスタなので、`care_action_id`には**TotoOps定義（`user_id IS NULL`）の行のみ**を設定できるようにする（特定ユーザーのカスタム育児行動を指す称号は成立しないため）。DBのFKだけでは表現できないため、Seeder投入時・管理側での運用ルールとして担保する。`ON DELETE RESTRICT`にしているのも、称号が参照している育児行動の行を誤って削除できないようにするため（TotoOps定義行はSeeder固定で通常は削除されない）。
+  - **ユーザーカスタム育児行動（Phase 2以降）の実績は、`care_action_id IS NULL`の全体合計称号でカバーする**。カスタム育児行動のログも`care_logs`に入るため、全体合計称号は追加設計なしでカウント対象に含む。カスタム育児行動そのものに専用の称号を作る方式は採らない：(1) `titles`に`user_id`を持たせるとマスタではなくなり、ログ／マスタ分離の原則（[decisions.md](decisions.md) §1.3）から外れる、(2) `ON DELETE RESTRICT`のため称号が紐づいたカスタム育児行動を物理削除できなくなり、「生存数8個の上限を超えたら1つ削除する」という運用（③参照）と噛み合わない、(3) TotoOps側が「おむつ交換士」のような固有の称号名を用意できず、機械生成の汎用名になって称号の面白さが薄れる。
 - 具体的なしきい値（`condition_value`の数値）は未決（[decisions.md](decisions.md) 未決#4）。
 - **`id`の採番規則**：③`care_actions`の標準17行と同じく、**Seederで固定のIDを明示的に指定**する（`1`から連番。各IDは`App\Support\TitleId`に名前付き定数として定義する）。ユーザーが行を作らないテーブルなので、③と違い予約域の確保は不要（自動採番と衝突する行が生まれない）。理由：`name`（称号名）も`condition_value`（しきい値）も未決#4で後から差し替える前提であり、Seederの同一性キーを`name`にすると称号名を修正した瞬間に既存行が更新されず**重複行が増える**（`titles.name`はUNIQUEではない）。⑦`user_titles.title_id`は`ON DELETE RESTRICT`かつ獲得済み行は永久保持のため、一度増えた重複行は削除もできない。定数名は変わりうる表示ラベルではなく「対象育児行動＋条件種別＋段階」（例：`TitleId::DIAPER_CHANGE_COUNT_TIER1`）で構成する。なお③と同じく、Seederは保存前に`$model->incrementing = false;`を立てる（③参照）。
 
