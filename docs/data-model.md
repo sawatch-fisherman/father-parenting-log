@@ -118,15 +118,18 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
 |---|---|---|---|
 | `id` | CHAR(26) | PK | 主キー（ULID） |
 | `provider` | VARCHAR(20) | NOT NULL | 認証プロバイダ（例 `google`） |
-| `provider_id` | VARCHAR(255) | NOT NULL | プロバイダの安定ID（Google の `sub`） |
+| `provider_id` | VARCHAR(255) | NULL | プロバイダの安定ID（Google の `sub`）。**退会時に`NULL`を入れる**ため NULL 許容 |
 | `remember_token` | VARCHAR(100) | NULL | Laravel 標準（ログイン保持） |
+| `withdrawn_at` | DATETIME | NULL | 退会日時。`NULL`=在籍中。退会済み判定の正（[decisions.md](decisions.md) §1.1） |
 | `created_at` | TIMESTAMP | NOT NULL | |
 | `updated_at` | TIMESTAMP | NOT NULL | 行更新時刻。※**ログイン日時ではない** |
 
-- **ユニーク制約**：`UNIQUE(provider, provider_id)`（同一アカウントの二重登録防止）
+- **ユニーク制約**：`UNIQUE(provider, provider_id)`（同一アカウントの二重登録防止）。`provider_id`を NULL 許容にしても、MySQL は UNIQUE 内の NULL 同士を別物として扱うため、退会者が複数いても衝突しない
 - **メール・パスワードは保持しない**（Web Pushのみ・個人情報最小限。未決#1 の有力案で確定）
 - **ニックネーム／年代／子の年齢帯は持たない** → `profiles`（②）へ分離
-- **最終ログイン日時カラムは持たない**（活動指標は育児ログ登録日）
+- **最終ログイン日時カラムは持たない**（活動指標は育児ログ登録日）。`withdrawn_at`はこれとは別物で、活動指標ではなく状態遷移の記録であり、外部には公開しない
+- **退会時は行を削除せず、値だけを書き換える**（in-place 匿名化。[decisions.md](decisions.md) §1.1「退会処理の方式」）：`provider = 'withdrawn'`／`provider_id = NULL`／`remember_token = NULL`／`withdrawn_at = now()`。`provider_id`が`NULL`になることで Google の`sub`と永久に一致せず、**ログイン不能がDBレベルで保証される**。行を残すのは④`care_logs`のFKの親として必要だからで、削除すると`ON DELETE CASCADE`で育児ログが道連れになり全体集計が過去に遡って変動してしまう
+- **`deleted_at`／`SoftDeletes`は使わない**（③`care_actions`と同様、ただし理由は異なる）：論理削除は「データを保持したまま見えなくし、`restore()`で戻せる」ことが前提だが、退会は`provider_id`と`nickname`を破壊するため**復元不可能**であり、行自体は`care_logs`のFK親として**永久に生かし続ける**。`deleted_at`という名前は実態を偽る。加えて`SoftDeletes`トレイトのグローバルスコープは`User`の全クエリに`whereNull`を注入するため、`User::find()`が退会者を返さなくなり、`$careLog->user`が`null`になり、問い合わせ対応で退会者を探すのに毎回`withTrashed()`が必要になる。その見返りである「退会者を全クエリから隠す」効果は本アプリでは無価値（認証は`(provider, provider_id)`の一致で行い`provider_id = NULL`なら構造的に一致せず、集計は`care_logs`単独で`users`をJOINしない）。トレイトを付けずカラム名だけ`deleted_at`にするのはさらに危険で、Laravelの慣習上 SoftDeletes と誤読され、後から誰かがトレイトを足して上記の副作用を静かに埋め込む
 
 ---
 
@@ -141,6 +144,7 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
 | `nickname` | VARCHAR(50) | NOT NULL | 表示名。文字数上限は暫定 |
 | `age_group` | TINYINT UNSIGNED | NOT NULL | コード値。`App\Enums\AgeGroup`（int backed enum）に対応（[decisions.md](decisions.md) §1.1 で候補1採用を確定）。任意項目だが「未回答」を明示コード値（`Unanswered = 0`）として持つ |
 | `child_age_group` | TINYINT UNSIGNED | NOT NULL | **いちばん下の子（末子）の年齢帯**。コード値で`App\Enums\ChildAgeGroup`（int backed enum）に対応。任意項目だが「未回答」を明示コード値（`Unanswered = 0`）として持つ（`age_group` と同じパターンで統一） |
+| `graduated_at` | DATETIME | NULL | 卒業日時。`NULL`=育児中。復帰時は`NULL`に戻す（**Phase 2以降**の機能。[decisions.md](decisions.md) §1.1） |
 | `created_at` | TIMESTAMP | NOT NULL | |
 | `updated_at` | TIMESTAMP | NOT NULL | |
 
@@ -151,6 +155,8 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
 - `age_group`・`child_age_group` はいずれも `NOT NULL` とし、「未回答」を `Unanswered = 0` という明示コード値で統一的に表現する（`NULL` は使わない）。理由：(1) 集計（`GROUP BY`等）で `NULL` 専用の分岐が不要になる、(2) 両カラムとも「任意項目・未選択ならUnanswered」という同一パターンで扱え、`age_group`だけ特別扱いする必要がない。未選択時に`Unanswered`を設定する処理は、両カラムとも同じバリデーション層のロジックで担保する（DB制約上の必須・任意の違いは持たない）。
 - **`child_age_group` は「いちばん下の子（末子）の年齢帯」で、子どもが複数いる世帯でも1値のみを保持する**（[decisions.md](decisions.md) §1.1 で確定）。複数の年齢帯を持つ中間テーブル（`profile_child_age_groups`）化や、`profiles` に子どもの人数・きょうだい有無を持たせる案は不採用：集計軸は1ユーザー1値のほうが母数＝ユーザー数と一致して解釈が単純であり、組み合わせを持たせると「粗い分類」という個人特定リスク低減の方針を無効化してしまうため。なお `care_logs`（④）は「どの子への行動か」を一切参照しないため子ども情報は本テーブルに閉じており、将来複数対応が必要になった場合も本テーブル側の変更だけで完結する（ログ側へ波及しない）。
 - 都道府県・子どもの氏名／誕生日／月齢・顔写真・人数／きょうだい構成・本名は取得しない（[privacy.md](privacy.md) §5）。
+- **`graduated_at` は卒業状態の唯一の表現**（**Phase 2以降**。[decisions.md](decisions.md) §1.1）。S7 設定画面の卒業ボタンで`now()`をセットし、「復帰／また育児する」ボタンで`NULL`に戻す。卒業してもデータは一切削除しない。`is_graduated` boolean や `status` enum は不採用（`*_at` の nullable timestamp はフラグと日時を二重管理にしないLaravel標準のイディオムで、`email_verified_at` と同型）。復帰時に`NULL`へ戻すため「いつ卒業したか」の履歴は残らない（既知のトレードオフ）。
+- **退会時は行を削除せず、値だけを書き換える**（in-place 匿名化。[decisions.md](decisions.md) §1.1「退会処理の方式」）：`nickname`を固定値（`退会したユーザー`）に、`age_group`・`child_age_group`を`Unanswered`(0)に上書きする。④`care_logs`の`age_group`・`child_age_group`は記録時点のスナップショットなので、この上書きは過去の集計に影響しない。
 - **表示言語（ロケール）は `profiles` に持たない**：日英切り替えは cookie 保持で実現し、DB スキーマは変更しない（MVP は多言語化の“構造”のみ組み込む軽量版。[decisions.md](decisions.md) §1.3、永続化の要否は未決 #19）。
 
 ---
@@ -190,6 +196,8 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 | `user_id` | CHAR(26) | NOT NULL, FK→`users.id` ON DELETE CASCADE | 記録した本人 |
 | `care_action_id` | BIGINT UNSIGNED | NOT NULL, FK→`care_actions.id` ON DELETE CASCADE | 育児行動。カスタム育児行動の物理削除時は本テーブルの該当行も道連れ削除（③参照） |
 | `occurred_at` | DATETIME | NOT NULL | 実施日時（秒精度。将来の時間帯別タイムラインチャート用。サブ秒は書き込み時に切り捨てる） |
+| `age_group` | TINYINT UNSIGNED | NOT NULL | **記録時点**の投稿者の年代。`App\Enums\AgeGroup` のコード値（②`profiles.age_group` と同じ enum） |
+| `child_age_group` | TINYINT UNSIGNED | NOT NULL | **記録時点**の末子の年齢帯。`App\Enums\ChildAgeGroup` のコード値（②`profiles.child_age_group` と同じ enum） |
 | `memo` | VARCHAR(255) | NULL | 任意メモ |
 | `created_at` / `updated_at` | TIMESTAMP | NOT NULL | |
 
@@ -200,12 +208,17 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 補足：
 
-- `count`・`duration_minutes`・`hp_delta`は持たない（[decisions.md](decisions.md) §1.3・§1.6）。1回の行動＝1行で記録し、回数は`COUNT(*)`で数える。
+- `count`・`duration_minutes`・`hp_delta`は持たない（[decisions.md](decisions.md) §1.3・§1.6）。1回の行動＝1行で記録し、回数は`COUNT(*)`で数える。`age_group`・`child_age_group`はこの原則の例外ではない：追加したのは**集計軸の凍結値**であって、複数回の行動を1行に畳み込むための集約値ではない。
+- **`age_group`・`child_age_group`は記録時点のスナップショット**（[decisions.md](decisions.md) §1.3「集計軸に使う属性はログ側にスナップショットする」）。書き込み時に②`profiles`からコピーし、以後`profiles`が更新されても**過去ログの値は変えない**。これがないと、ユーザーが`child_age_group`を0歳→1歳に更新した瞬間に過去ログがすべて遡って「1歳のログ」に化け、Phase 2 の年代別・子ども年齢帯別集計が時間とともに書き換わってしまう。
+  - **この2列にインデックスは張らない**。Phase 2 の全体傾向集計は`aggregate_*`経由になる想定で、MVPでこの2列を検索条件に使うクエリは存在しない。最も行数が増えるログテーブルでINSERTごとの不要なインデックス更新と容量を避ける（`INDEX (user_id, care_action_id)`を張らないのと同じ判断）。
+  - プライバシー上の位置づけ：どちらも粗い区分（5区分／6区分）のコード値であり、単体では個人を識別しない（[privacy.md](privacy.md) §3・§4・§9）。
+  - 退会時は②`profiles`側の年代を`Unanswered`に書き換えるが、**本テーブルのスナップショットは書き換えない**（[decisions.md](decisions.md) §1.1「退会処理の方式」）。これにより退会後も年代別集計が無傷で残る。
 - 集計（累計実績・タイムライン・Phase 2の全体傾向）は`care_action_id`でグルーピングする。`care_actions.name`は表示専用で、集計ロジックには登場しない。
 - 二重送信防止の`UNIQUE(user_id, care_action_id, occurred_at)`を機能させるため、**短タップ（即時記録）でもクライアントがタップ時点のタイムスタンプを`occurred_at`として必ず送信する**（サーバー採番の`now()`だとリクエストごとに値が変わり、同一操作のリトライ・二度発火を弾けない。`occurred_at`省略時の`now()`はフォールバックであり正規クライアントは使わない）。合わせてクライアント側は送信中の送信ボタンをdisableする。`occurred_at`は秒精度で保存しサブ秒は切り捨てるため、disableが間に合わなかった同一秒内の連打もこのUNIQUE制約で弾ける（[decisions.md](decisions.md) §1.3）。
 - S10（実施日時指定画面）は分精度入力のため、既存記録と「育児行動×日時」が衝突した場合は「同じ日時に同じ記録があります」という分かりやすいバリデーションエラーを返す（同一分に同じ育児行動を2回記録したい場合は、1分ずらして登録する運用を許容する）。
 - **`occurred_at`の上限バリデーション**：`occurred_at <= now() + 5分`をアプリ層（FormRequest）で検証する（DB制約ではない）。育児記録は過去の行動を記録するものであり未来日時は原則無意味だが、短タップ（即時記録）はクライアント端末のタイムスタンプをそのまま送信するため、端末クロックのわずかなズレ（自動時刻同期OFFの端末・安価な端末のドリフト等）で正当な「今記録した」操作が誤って弾かれないよう、5分の許容バッファを持たせる（[decisions.md](decisions.md) §1.3）。
-- **事後編集は`occurred_at`のみ許可**。`care_action_id`の変更は不可とし、育児行動を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_action_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。
+- **`occurred_at`の下限バリデーション（遡り7日の締め）**：`occurred_at >= 7日前の00:00`（`config('totoops.care_log.backdate_days')`）をアプリ層で検証する（DB制約ではない）。上記の上限（`now() + 5分`）と合わせ、`occurred_at`の有効範囲は「**7日前の00:00 〜 現在＋5分**」となる。この制限は**作成・`occurred_at`の変更・削除の3操作すべて**に適用し、8日以上前の期間を不変にする（[decisions.md](decisions.md) §1.3「育児ログの遡り操作は直近7日に制限する」）。目的は、上記スナップショットと実際の年代のズレを上限で縛ることと、Phase 2 の`aggregate_*`を再計算不要にすること。締めを過ぎた記録の削除は問い合わせ窓口で個別に対応する（[privacy.md](privacy.md) §9）。
+- **事後編集は`occurred_at`のみ許可**。`care_action_id`の変更は不可とし、育児行動を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_action_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。なお`age_group`・`child_age_group`は**編集対象に含めない**（記録時点の事実として凍結するため、ユーザーからも変更できない）。
 
 ---
 

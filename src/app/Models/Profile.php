@@ -24,6 +24,7 @@ class Profile extends Model
         return [
             'age_group' => AgeGroup::class,
             'child_age_group' => ChildAgeGroup::class,
+            'graduated_at' => 'datetime',
         ];
     }
 

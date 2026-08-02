@@ -19,6 +19,14 @@ return new class extends Migration
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('care_action_id')->constrained()->cascadeOnDelete();
             $table->dateTime('occurred_at');
+            // 記録時点の年代・末子の年齢帯のスナップショット（profiles からコピーする）。
+            // profiles 側の値は可変なので、集計時に JOIN すると「現在の年代」でバケットされ、
+            // ユーザーが child_age_group を更新した瞬間に過去ログが遡って別の年代へ移動してしまう
+            // （docs/decisions.md §1.3「集計軸に使う属性はログ側にスナップショットする」）。
+            // Phase 2 の全体傾向集計は aggregate_* 経由になる想定で、MVP でこの2列を検索条件に
+            // 使うクエリは無いため、インデックスは張らない。
+            $table->unsignedTinyInteger('age_group');
+            $table->unsignedTinyInteger('child_age_group');
             $table->string('memo', 255)->nullable();
             $table->timestamps();
 

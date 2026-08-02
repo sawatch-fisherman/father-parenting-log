@@ -20,6 +20,16 @@ class User extends Authenticatable
     use HasFactory, HasUlids, Notifiable;
 
     /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'withdrawn_at' => 'datetime',
+        ];
+    }
+
+    /**
      * @return HasOne<Profile, $this>
      */
     public function profile(): HasOne

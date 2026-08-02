@@ -21,6 +21,9 @@ return new class extends Migration
             // 子どもが複数いる場合も「いちばん下の子（末子）」の年齢帯1つのみを持つ
             // （docs/decisions.md §1.1）。
             $table->unsignedTinyInteger('child_age_group');
+            // 卒業日時（NULL = 育児中）。新しい子が生まれた場合の「復帰」で NULL に戻す
+            // （Phase 2 以降の機能。docs/decisions.md §1.1）。
+            $table->dateTime('graduated_at')->nullable();
             $table->timestamps();
         });
     }

@@ -58,6 +58,9 @@ flowchart TD
   - [x] マイグレーション（**MVPは7テーブル**。`users`・`care_logs` のみ ULID `CHAR(26)` 主キー、他は連番。[decisions.md](decisions.md) §1.3）：`users` / `profiles` / `care_actions` / `care_logs` / `user_slot_configs` / `titles` / `user_titles`
     - **`users` は既存スキャフォールドの `0001_01_01_000000_create_users_table.php` を直接書き換える（新規マイグレーションで後から ALTER しない）**：`migrate` 実行実績のない greenfield 状態のため、`name`/`email`/`email_verified_at`/`password` カラムと `password_reset_tokens` テーブル定義を削除し、`id` を ULID 化（露出こそしないが将来の API 露出に備えた保険。[decisions.md](decisions.md) §1.3）、`provider`/`provider_id`（`UNIQUE(provider, provider_id)`）を追加。`remember_token` と `sessions` テーブルはそのまま残す（セッション認証で使用。[data-model.md](data-model.md) ①）
     - `care_logs`：`UNIQUE(user_id, care_action_id, occurred_at)`（二重送信防止）、`INDEX(user_id, occurred_at)`、`occurred_at DATETIME`（秒精度）。単独の `INDEX(user_id, care_action_id)` は上記UNIQUEの左端プレフィックスで賄えるため張らない（[data-model.md](data-model.md) ④）
+      - **`age_group` / `child_age_group`（記録時点のスナップショット）を持たせる**。集計軸の属性は可変な `profiles` を JOIN せずログ側に凍結する（[decisions.md](decisions.md) §1.3「集計軸に使う属性はログ側にスナップショットする」）。**過去時点の年代は後から復元できないため、器は必ず M0 で作る**（年代別集計の利用は Phase 2）。この2列にインデックスは張らない
+    - `users`：**退会は行を削除せず in-place 匿名化で行う**ため、`provider_id` を NULL 許容にし `withdrawn_at DATETIME NULL` を持たせる（`SoftDeletes`/`deleted_at` は使わない。[decisions.md](decisions.md) §1.1、[data-model.md](data-model.md) ①）
+    - `profiles`：卒業状態のための `graduated_at DATETIME NULL`（Phase 2 用の器。[decisions.md](decisions.md) §1.1）
     - `user_slot_configs`：`UNIQUE(user_id, slot_position)`、`UNIQUE(user_id, care_action_id)`
     - `care_actions`：マイグレーション内で `AUTO_INCREMENT` を `CareActionId::CUSTOM_ID_FLOOR`（`1000`）に引き上げ、標準17行用に `1`〜`999` を予約する（[decisions.md](decisions.md) §1.3）
     - FK の `ON DELETE` 方針は data-model.md 各節に従う（`care_action_id`→`care_logs` は CASCADE、`titles`/`user_titles` の `title_id` は RESTRICT 等）
@@ -66,7 +69,7 @@ flowchart TD
   - [x] **`App\Support\CareActionId`（固定ID定数クラス）**：TotoOps標準17行の固定ID（`1`〜`17`）と、カスタム行の採番開始値`CUSTOM_ID_FLOOR = 1000`を名前付き定数（例：`DIAPER_CHANGE`）として定義（[decisions.md](decisions.md) §1.3「ID／主キーの形式」例外規定、[data-model.md](data-model.md) ③）
   - [x] Seeder：`CareActionSeeder`（`user_id IS NULL` の17行。**`CareActionId` 定数で `id`（`1`〜`17`）を明示指定**して作成（保存前に `incrementing = false`）。`sort_order` 1〜17は [features.md](features.md)「育児行動一覧」のカテゴリ順で採番＝`id` の昇順とは一致しない）／`TitleSeeder`（**84行。Count・Streak 両方の `condition_type` を投入し、全17育児行動に銅・銀・金を揃える。対象の育児行動は `CareActionId` 定数で指定し `name` 文字列一致には依存しない。称号名・等級・しきい値は確定済み**。[decisions.md](decisions.md) §1.3・[features.md](features.md)「称号一覧」）
   - [x] Factory（テスト用。各 Model。`CareAction` ファクトリはユーザーカスタム用途のため自動採番のまま＝予約域より上に採番される）
-  - [x] `config/totoops.php`：登録時に自動ピン留めする「初期おすすめ8個」を **`CareActionId` 定数の配列**で指定（`name` ではなく固定IDを直接参照。**未決 #11 → 暫定リスト＋TODO**。[decisions.md](decisions.md) §1.3）
+  - [x] `config/totoops.php`：登録時に自動ピン留めする「初期おすすめ8個」を **`CareActionId` 定数の配列**で指定（`name` ではなく固定IDを直接参照。**未決 #11 → 暫定リスト＋TODO**。[decisions.md](decisions.md) §1.3）／`care_log.backdate_days = 7`（遡り操作の締め日数。ハードコードせず config 値にして障害時の一時的な緩和を可能にする。[decisions.md](decisions.md) §1.3）
   - [x] **i18n 基盤（軽量版・依存追加なし。[decisions.md](decisions.md) §1.3）**：
     - `config/app.php`・`.env.example`：`locale`/`fallback_locale` を `ja`、`faker_locale` を `ja_JP`（現状 `en`）
     - `app/Http/Middleware/SetLocale.php`（cookie→`App::setLocale()`、web ミドルウェアグループに登録。既定 `ja`）
@@ -74,7 +77,7 @@ flowchart TD
     - `resources/js/composables/useTrans.ts`（`t(key, replacements?)`。共有 props を参照）
     - `POST /locale`＋`LocaleController@update`（cookie セット＋リダイレクト。ルート名 `locale.update`）
     - `lang/ja/`（`nav.php`・`validation.php` 等の骨組み。各画面のキーは以降のスライスで追加）
-- **テスト観点**：`migrate:fresh --seed` 成功、`care_logs` のユニーク制約が効く、Enum cast の往復、`POST /locale` で cookie が変わり `App::getLocale()` が切り替わる。
+- **テスト観点**：`migrate:fresh --seed` 成功、`care_logs` のユニーク制約が効く、Enum cast の往復、`POST /locale` で cookie が変わり `App::getLocale()` が切り替わる、**退会の in-place 匿名化がスキーマ上成立する**（`provider_id = NULL` の退会者が複数いても `UNIQUE(provider, provider_id)` に衝突しない／退会で `care_logs` が1件も減らない／`profiles` の年代を潰しても `care_logs` のスナップショットは変わらない）。
 - **完了条件**：`migrate:fresh --seed` が通る／`composer check` green／ロケール切り替えが効く。
 - **ブロッカー**：未決 #11（初期8個）は**暫定値で着手可**、確定後に差し替え。i18n は英訳未投入でも `fallback_locale = ja` で日本語表示になるため着手可（英訳時期は未決 #18）。
 
@@ -137,7 +140,9 @@ flowchart TD
 - **依存**：M3
 - **対応画面/機能**：S3短タップ・S4（その他）・S10（実施日時指定）／[features.md](features.md)「育児ログ登録」「育児行動管理（その他ボタン）」／[screens.md](screens.md) `care-logs.store`・`care-logs.create`・`care-actions.other`
 - **タスク**：
-  - [ ] `CareLogController`（`create`＝S10 / `store`＝共通登録）、`StoreCareLogRequest`（`care_action_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at <= now() + 5分` の上限バリデーション**を含む。[decisions.md](decisions.md) §1.3）
+  - [ ] `CareLogController`（`create`＝S10 / `store`＝共通登録）、`StoreCareLogRequest`（`care_action_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at` の範囲バリデーション＝「`config('totoops.care_log.backdate_days')` 日前の 00:00 〜 `now() + 5分`」**を含む。[decisions.md](decisions.md) §1.3）
+  - [ ] **`age_group` / `child_age_group` を `profiles` からコピーして保存する**（記録時点のスナップショット。ユーザー入力からは受け取らない。[data-model.md](data-model.md) ④）
+  - [ ] S10 の日付ピッカーの選択可能範囲を「7日前 〜 今日」に制限し、制限理由の補助テキストを添える（責めるトーンにしない。[wireframes.md](wireframes.md) S10）
   - [ ] `CareActionController@other`（`GET /care-actions/other`＝S4）：`user_slot_configs` に無い残りの育児行動を返す（MVP は17個中9個）
   - [ ] `POST /care-logs`：**クライアントが `occurred_at`（秒精度）を必ず送信**。`UNIQUE(user_id, care_action_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
   - [ ] Vue：S3短タップ＝タップ時刻送信＋送信中ボタン disable／長押し→S10。`Pages/CareLogs/Create.vue`（S10・日時指定）、`Pages/CareActions/Other.vue`（S4）
@@ -174,8 +179,9 @@ flowchart TD
 - **対応画面/機能**：S13（記録履歴）・S11（ログ編集）／[features.md](features.md)「記録履歴（タイムライン）」／[screens.md](screens.md) `history.index`・`care-logs.edit`・`care-logs.update`・`care-logs.destroy`
 - **タスク**：
   - [ ] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
-  - [ ] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` のみ許可**。育児行動の変更は不可＝削除→再作成。**`occurred_at <= now() + 5分` の上限バリデーションは `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
-  - [ ] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）
+  - [ ] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` のみ許可**。育児行動の変更は不可＝削除→再作成。**`occurred_at` の範囲バリデーションは `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
+  - [ ] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）。**あわせて「対象の `occurred_at` が7日より前なら弾く」締めのチェックを `update`・`delete` の両方に入れる**（[decisions.md](decisions.md) §1.3）
+  - [ ] S13 で `occurred_at` が7日より前の行は「…」を非活性にし、タップ時は理由を伝えるトーストを出す（[wireframes.md](wireframes.md) S13）
   - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`care_logs` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13空状態）、`Pages/CareLogs/Edit.vue`（S11・日時変更／削除のみ）
 - **テスト観点**：他人の記録を Policy で弾く、`occurred_at` のみ更新、削除、更新先が既存行と衝突→バリデーションエラー、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
@@ -221,7 +227,7 @@ flowchart TD
 | #11 | 共通のおすすめ初期8個 | M0（config）・M2（slot生成） | 暫定リストで着手可。確定後に `config/totoops.php` を差し替え |
 | #4 | 称号のしきい値 | M0（TitleSeeder）・M5（判定） | 暫定値で着手可。構造は確定、数値のみ後決め |
 | #15 | トークン有効期限 | （MVP対象外） | Prunable/API 段階で扱う。MVP に影響なし |
-| #5,#8,#12,#13,#14,#16 | 集計匿名化・PWA・卒業・通知・公開サイト | Phase 2+ | MVP 範囲外 |
+| #5,#8,#13,#14,#16 | 集計匿名化・PWA・通知・公開サイト | Phase 2+ | MVP 範囲外 |
 
 ### 認証方式の整理／Sanctum 先送り
 
