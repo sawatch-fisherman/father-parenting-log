@@ -10,7 +10,7 @@ use App\Support\TitleId;
 use Illuminate\Database\Seeder;
 
 /**
- * TotoOps 標準の称号マスタ84行を投入する。
+ * TotoOps 標準の称号マスタ87行を投入する。
  *
  * 同一性キーには`name`ではなく{@see TitleId}の固定IDを使う（`titles.name`は非ユニーク列で、
  * 称号名を修正して再シードすると既存行が更新されず重複行が増えてしまうため）。
@@ -24,8 +24,14 @@ use Illuminate\Database\Seeder;
  * カテゴリ（日常ケア等）とは独立した軸で、両者は一致しない。Streak系は全体版が 7/30/90日、
  * 育児行動別版が 3/7/30日（同じ等級でも育児行動別のほうが難度が高いため1段階易しくする）。
  *
- * 育児行動別Streakは「毎日発生しうる育児行動」10個のみを対象とする。爪切りや発熱・看病のように
+ * 育児行動別Streakは「毎日発生しうる育児行動」11個のみを対象とする。爪切りや発熱・看病のように
  * 連続日数が原理的に伸びない育児行動には設定しない。
+ *
+ * 配列の並び順がそのまま`sort_order`（＝称号の提示順）になる。Count系・育児行動別Streak系とも
+ * `care_actions.sort_order`（育児行動の表示順）に揃えること。称号を後から追加する場合、`id`は
+ * 永続化された主キーなので末尾に採番するしかないが、`sort_order`は提示順を表す独立したキーなので
+ * **配列内の正しい位置に差し込む**（着替えのStreakが`id` `85`〜`87`でありながら配列上は
+ * おむつ交換の直後に置かれているのはこのため。両者を一致させる制約は無い）。
  *
  * @see docs/features.md「称号一覧」
  * @see docs/data-model.md ⑥ `titles`
@@ -99,6 +105,9 @@ class TitleSeeder extends Seeder
             [TitleId::DIAPER_CHANGE_STREAK_TIER1, CareActionId::DIAPER_CHANGE, '3日連続おむつ交換', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::DIAPER_CHANGE_STREAK_TIER2, CareActionId::DIAPER_CHANGE, '1週間連続おむつ交換', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::DIAPER_CHANGE_STREAK_TIER3, CareActionId::DIAPER_CHANGE, '1ヶ月連続おむつ交換', TitleGrade::Gold, TitleConditionType::Streak, 30],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER1, CareActionId::CHANGE_CLOTHES, '3日連続着替え', TitleGrade::Bronze, TitleConditionType::Streak, 3],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER2, CareActionId::CHANGE_CLOTHES, '1週間連続着替え', TitleGrade::Silver, TitleConditionType::Streak, 7],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER3, CareActionId::CHANGE_CLOTHES, '1ヶ月連続着替え', TitleGrade::Gold, TitleConditionType::Streak, 30],
             [TitleId::BRUSH_TEETH_STREAK_TIER1, CareActionId::BRUSH_TEETH, '3日連続歯磨き', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::BRUSH_TEETH_STREAK_TIER2, CareActionId::BRUSH_TEETH, '1週間連続歯磨き', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::BRUSH_TEETH_STREAK_TIER3, CareActionId::BRUSH_TEETH, '1ヶ月連続歯磨き', TitleGrade::Gold, TitleConditionType::Streak, 30],
@@ -126,9 +135,6 @@ class TitleSeeder extends Seeder
             [TitleId::WALK_PARK_STREAK_TIER1, CareActionId::WALK_PARK, '3日連続公園遊び', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::WALK_PARK_STREAK_TIER2, CareActionId::WALK_PARK, '1週間連続公園遊び', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::WALK_PARK_STREAK_TIER3, CareActionId::WALK_PARK, '1ヶ月連続公園遊び', TitleGrade::Gold, TitleConditionType::Streak, 30],
-            [TitleId::CHANGE_CLOTHES_STREAK_TIER1, CareActionId::CHANGE_CLOTHES, '3日連続着替え', TitleGrade::Bronze, TitleConditionType::Streak, 3],
-            [TitleId::CHANGE_CLOTHES_STREAK_TIER2, CareActionId::CHANGE_CLOTHES, '1週間連続着替え', TitleGrade::Silver, TitleConditionType::Streak, 7],
-            [TitleId::CHANGE_CLOTHES_STREAK_TIER3, CareActionId::CHANGE_CLOTHES, '1ヶ月連続着替え', TitleGrade::Gold, TitleConditionType::Streak, 30],
         ];
 
         foreach ($titles as $sortOrder => [$id, $careActionId, $name, $grade, $conditionType, $conditionValue]) {

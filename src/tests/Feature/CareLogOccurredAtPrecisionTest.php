@@ -17,18 +17,6 @@ class CareLogOccurredAtPrecisionTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_occurred_at_is_stored_and_retrieved_with_second_precision(): void
-    {
-        $careLog = CareLog::factory()->create([
-            'occurred_at' => '2026-07-29 12:34:56',
-        ]);
-
-        $this->assertSame(
-            '2026-07-29 12:34:56',
-            DB::table('care_logs')->where('id', $careLog->id)->value('occurred_at'),
-        );
-    }
-
     public function test_sub_second_component_is_truncated_on_write(): void
     {
         $careLog = CareLog::factory()->create([

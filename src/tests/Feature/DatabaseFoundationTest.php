@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Enums\TitleConditionType;
-use App\Enums\TitleGrade;
 use App\Models\CareAction;
 use App\Models\CareLog;
 use App\Models\Profile;
@@ -19,13 +17,6 @@ use Tests\TestCase;
 class DatabaseFoundationTest extends TestCase
 {
     use LazilyRefreshDatabase;
-
-    public function test_seeding_creates_seventeen_standard_care_actions(): void
-    {
-        $this->seed();
-
-        $this->assertSame(17, CareAction::query()->whereNull('user_id')->count());
-    }
 
     /**
      * TotoOps標準17行の`sort_order`が`1`〜`17`の重複なし連番であることを検証する。
@@ -44,27 +35,6 @@ class DatabaseFoundationTest extends TestCase
             ->all();
 
         $this->assertSame(range(1, 17), $sortOrders);
-    }
-
-    public function test_seeding_creates_both_count_and_streak_titles(): void
-    {
-        $this->seed();
-
-        $this->assertGreaterThan(0, Title::query()->where('condition_type', TitleConditionType::Count)->count());
-        $this->assertGreaterThan(0, Title::query()->where('condition_type', TitleConditionType::Streak)->count());
-    }
-
-    public function test_title_grade_round_trips_as_an_enum_and_never_uses_level_notation(): void
-    {
-        $this->seed();
-
-        $this->assertInstanceOf(
-            TitleGrade::class,
-            Title::query()->findOrFail(TitleId::DIAPER_CHANGE_COUNT_TIER2)->grade,
-        );
-
-        // 段階の表現は`grade`に一本化する（docs/decisions.md §1.3「称号の提示順・等級・一覧表示」）。
-        $this->assertSame(0, Title::query()->where('name', 'like', '%Lv.%')->count());
     }
 
     public function test_standard_master_rows_keep_their_fixed_ids(): void

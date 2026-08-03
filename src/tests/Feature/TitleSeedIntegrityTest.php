@@ -44,9 +44,51 @@ class TitleSeedIntegrityTest extends TestCase
     }
 
     /**
+     * 育児行動別の称号が、条件種別ごとに`care_actions.sort_order`（育児行動の表示順）どおりの
+     * 提示順で並んでいることを検証する。
+     *
+     * `titles.id`は永続化された主キーなので称号を後から追加すると末尾に採番するしかないが、
+     * `titles.sort_order`は提示順を表す独立したキーなので、追加した称号も配列の正しい位置に
+     * 差し込む必要がある（docs/data-model.md ⑥）。両者を混同すると、追加した育児行動の称号だけが
+     * S5の獲得モーダルで最後に出るという食い違いが生まれる。
+     */
+    public function test_care_action_titles_are_presented_in_care_action_display_order(): void
+    {
+        $this->seed();
+
+        $displayOrder = CareAction::query()->whereNull('user_id')->pluck('sort_order', 'id');
+
+        /** @var Collection<int, Collection<int, Title>> $seriesByConditionType */
+        $seriesByConditionType = Title::query()
+            ->whereNotNull('care_action_id')
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy(fn (Title $title): int => $title->condition_type->value);
+
+        foreach ($seriesByConditionType as $conditionType => $titles) {
+            $presented = $titles
+                ->pluck('care_action_id')
+                ->unique()
+                ->map(fn (int $careActionId): int => (int) $displayOrder[$careActionId])
+                ->values()
+                ->all();
+
+            $ascending = $presented;
+            sort($ascending);
+
+            $this->assertSame(
+                $ascending,
+                $presented,
+                sprintf('condition_type %d の称号が育児行動の表示順に並んでいない', $conditionType),
+            );
+        }
+    }
+
+    /**
      * 等級は`condition_value`から自動導出しない独立した列なので、両者が逆転していても
      * DBは受け付けてしまう（docs/data-model.md ⑥）。系統ごとに 銅 < 銀 < 金 の順で
-     * しきい値が上がることをここで担保する。
+     * しきい値が上がることをここで担保する（しきい値そのものの重複は
+     * TitleUniqueConstraintTest で担保する）。
      */
     public function test_thresholds_increase_with_grade_within_each_series(): void
     {
@@ -69,7 +111,6 @@ class TitleSeedIntegrityTest extends TestCase
             sort($ascending);
 
             $this->assertSame($ascending, $thresholds, "系統 {$key} で等級としきい値の並びが逆転している");
-            $this->assertSame(count($thresholds), count(array_unique($thresholds)), "系統 {$key} でしきい値が重複している");
         }
     }
 

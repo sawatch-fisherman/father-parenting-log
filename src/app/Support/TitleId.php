@@ -15,14 +15,18 @@ use Database\Seeders\TitleSeeder;
  * ユーザーが行を作らないテーブルなので、{@see CareActionId}と違い予約域の確保は不要。
  * 定数名は変わりうる表示ラベルではなく「対象育児行動＋条件種別＋段階」で構成する。
  *
- * 値は`1`からの単純連番で、{@see TitleSeeder}の配列の並び順
- * （＝`sort_order`）と一致する。ID自体に育児行動や等級を読み取れる意味は持たせない
+ * 値は`1`からの単純連番で、称号を追加するときは既存の値を詰め直さず末尾に採番する。
+ * ID自体に育児行動や等級を読み取れる意味は持たせない
  * （称号の絞り込み・並べ替えは`care_action_id`・`condition_type`・`sort_order`で行えるため、
  * ID側に構造を持たせる保守コストに見合わない）。並びは以下の3ブロック：
  *
  * - `1`〜`51`：Count（累計回数系）。育児行動の表示順 × 銅・銀・金
  * - `52`〜`54`：全体Streak（`care_action_id IS NULL`）
- * - `55`〜`84`：育児行動別Streak（毎日発生しうる10行動 × 銅・銀・金）
+ * - `55`〜`87`：育児行動別Streak（毎日発生しうる11行動 × 銅・銀・金）
+ *
+ * **`sort_order`（称号の提示順）とは一致しない。** 提示順は{@see TitleSeeder}の配列の並び順が
+ * 決める独立したキーで、そちらは常に育児行動の表示順に揃える。後から追加した着替えのStreakが
+ * `85`〜`87`でありながら提示順ではおむつ交換の直後に来るのがその例。
  *
  * @see docs/data-model.md ⑥ `titles`
  * @see docs/decisions.md §1.3「ID／主キーの形式」例外規定・「称号の提示順・等級・一覧表示」
@@ -141,7 +145,8 @@ final class TitleId
 
     public const int OVERALL_STREAK_TIER3 = 54;
 
-    // 育児行動別Streak（連続日数系）— 毎日発生しうる10行動のみ。育児行動の表示順。
+    // 育児行動別Streak（連続日数系）— 毎日発生しうる11行動のみ。定数はID順に並べるため、
+    // 後から追加した着替え（`85`〜`87`）だけが末尾に来る（提示順は TitleSeeder の配列が持つ）。
 
     public const int DIAPER_CHANGE_STREAK_TIER1 = 55;
 
