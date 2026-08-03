@@ -44,6 +44,43 @@ class TitleSeedIntegrityTest extends TestCase
     }
 
     /**
+     * 全体合計（`care_action_id IS NULL`）のCount称号が銅・銀・金の3段階そろっていることを検証する。
+     *
+     * この系統は、ユーザーカスタム育児行動（Phase 2以降）の積み上げを受け止める唯一のCount系統。
+     * カスタム育児行動そのものには専用の称号を作らない設計（docs/data-model.md ⑥）なので、
+     * ここが欠けると「自分で作った育児行動をいくら記録しても称号が1件も増えない」状態になる。
+     */
+    public function test_overall_count_titles_cover_every_grade(): void
+    {
+        $this->seed();
+
+        foreach (TitleGrade::cases() as $grade) {
+            $this->assertSame(1, Title::query()
+                ->whereNull('care_action_id')
+                ->where('condition_type', TitleConditionType::Count)
+                ->where('grade', $grade)
+                ->count(), "全体合計に{$grade->label()}のCount称号がちょうど1件ない");
+        }
+    }
+
+    /**
+     * 全体称号（`care_action_id IS NULL`）が育児行動別の称号より先に提示されることを検証する。
+     *
+     * 称号図鑑は90件の一覧なので、件数の少ない全体称号を後ろに置くと発見性が失われる
+     * （docs/decisions.md §1.3「称号の提示順・等級・一覧表示」）。育児行動別の称号を
+     * 追加する際に配列の先頭側へ差し込んでしまう事故をここで検知する。
+     */
+    public function test_overall_titles_are_presented_before_care_action_titles(): void
+    {
+        $this->seed();
+
+        $lastOverall = Title::query()->whereNull('care_action_id')->max('sort_order');
+        $firstByCareAction = Title::query()->whereNotNull('care_action_id')->min('sort_order');
+
+        $this->assertLessThan($firstByCareAction, $lastOverall, '全体称号が育児行動別の称号より後に提示されている');
+    }
+
+    /**
      * 育児行動別の称号が、条件種別ごとに`care_actions.sort_order`（育児行動の表示順）どおりの
      * 提示順で並んでいることを検証する。
      *

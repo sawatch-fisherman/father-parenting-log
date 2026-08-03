@@ -10,7 +10,7 @@ use App\Support\TitleId;
 use Illuminate\Database\Seeder;
 
 /**
- * TotoOps 標準の称号マスタ87行を投入する。
+ * TotoOps 標準の称号マスタ90行を投入する。
  *
  * 同一性キーには`name`ではなく{@see TitleId}の固定IDを使う（`titles.name`は非ユニーク列で、
  * 称号名を修正して再シードすると既存行が更新されず重複行が増えてしまうため）。
@@ -19,19 +19,21 @@ use Illuminate\Database\Seeder;
  * 1対1に対応する。称号名だけで等級が読み取れる状態を保つこと。Streak系は「{日数表記}連続{短縮ラベル}」で、
  * 名前にしきい値が埋め込まれるため`condition_value`を変えるときは`name`も併せて変える。
  *
- * しきい値は、Count系が育児行動を発生頻度で3帯に分けて帯ごとに共通の値を当てる
+ * しきい値は、Count系の育児行動別版が育児行動を発生頻度で3帯に分けて帯ごとに共通の値を当てる
  * （高頻度 50/200/500・中頻度 20/100/300・低頻度 10/30/100）。この頻度帯は`care_actions.sort_order`の
- * カテゴリ（日常ケア等）とは独立した軸で、両者は一致しない。Streak系は全体版が 7/30/90日、
- * 育児行動別版が 3/7/30日（同じ等級でも育児行動別のほうが難度が高いため1段階易しくする）。
+ * カテゴリ（日常ケア等）とは独立した軸で、両者は一致しない。Count系の全体合計版は 100/500/2000。
+ * Streak系は全体版が 7/30/90日、育児行動別版が 3/7/30日
+ * （同じ等級でも育児行動別のほうが難度が高いため1段階易しくする）。
  *
  * 育児行動別Streakは「毎日発生しうる育児行動」11個のみを対象とする。爪切りや発熱・看病のように
  * 連続日数が原理的に伸びない育児行動には設定しない。
  *
- * 配列の並び順がそのまま`sort_order`（＝称号の提示順）になる。Count系・育児行動別Streak系とも
- * `care_actions.sort_order`（育児行動の表示順）に揃えること。称号を後から追加する場合、`id`は
- * 永続化された主キーなので末尾に採番するしかないが、`sort_order`は提示順を表す独立したキーなので
- * **配列内の正しい位置に差し込む**（着替えのStreakが`id` `85`〜`87`でありながら配列上は
- * おむつ交換の直後に置かれているのはこのため。両者を一致させる制約は無い）。
+ * 配列の並び順がそのまま`sort_order`（＝称号の提示順）になる。並び順のルールは
+ * 「**対象範囲（全体→育児行動別）→ 条件種別（Count→Streak）→ 育児行動の表示順 → 等級（銅→銀→金）**」
+ * の4段階で、育児行動別の2ブロックはいずれも`care_actions.sort_order`（育児行動の表示順）に揃えること。
+ * 称号を追加するときは**配列内の正しい位置に差し込む**（末尾に足すと、その称号だけS5の獲得モーダルで
+ * 最後に出てしまう）。未リリースの間は`TitleId`の値も併せて振り直して`id`と`sort_order`を一致させるが、
+ * リリース後は`id`を振り直せないため優先するのは`sort_order`側になる（{@see TitleId}参照）。
  *
  * @see docs/features.md「称号一覧」
  * @see docs/data-model.md ⑥ `titles`
@@ -45,7 +47,15 @@ class TitleSeeder extends Seeder
     public function run(): void
     {
         $titles = [
-            // Count（累計回数系）— 育児行動の表示順。
+            // Count（全体合計）— 育児行動を問わない累計回数。カスタム育児行動のログもここに算入される。
+            [TitleId::OVERALL_COUNT_TIER1, null, '育児見習い', TitleGrade::Bronze, TitleConditionType::Count, 100],
+            [TitleId::OVERALL_COUNT_TIER2, null, '育児職人', TitleGrade::Silver, TitleConditionType::Count, 500],
+            [TitleId::OVERALL_COUNT_TIER3, null, '育児名人', TitleGrade::Gold, TitleConditionType::Count, 2000],
+            // Streak（全体）— 育児行動を問わず記録した日が連続。
+            [TitleId::OVERALL_STREAK_TIER1, null, '1週間連続育児ログ', TitleGrade::Bronze, TitleConditionType::Streak, 7],
+            [TitleId::OVERALL_STREAK_TIER2, null, '1ヶ月連続育児ログ', TitleGrade::Silver, TitleConditionType::Streak, 30],
+            [TitleId::OVERALL_STREAK_TIER3, null, '3ヶ月連続育児ログ', TitleGrade::Gold, TitleConditionType::Streak, 90],
+            // Count（育児行動別）— 育児行動の表示順。
             [TitleId::DIAPER_CHANGE_COUNT_TIER1, CareActionId::DIAPER_CHANGE, 'おむつ交換見習い', TitleGrade::Bronze, TitleConditionType::Count, 50],
             [TitleId::DIAPER_CHANGE_COUNT_TIER2, CareActionId::DIAPER_CHANGE, 'おむつ交換職人', TitleGrade::Silver, TitleConditionType::Count, 200],
             [TitleId::DIAPER_CHANGE_COUNT_TIER3, CareActionId::DIAPER_CHANGE, 'おむつ交換名人', TitleGrade::Gold, TitleConditionType::Count, 500],
@@ -97,11 +107,7 @@ class TitleSeeder extends Seeder
             [TitleId::SICK_CARE_COUNT_TIER1, CareActionId::SICK_CARE, '看病見習い', TitleGrade::Bronze, TitleConditionType::Count, 10],
             [TitleId::SICK_CARE_COUNT_TIER2, CareActionId::SICK_CARE, '看病職人', TitleGrade::Silver, TitleConditionType::Count, 30],
             [TitleId::SICK_CARE_COUNT_TIER3, CareActionId::SICK_CARE, '看病名人', TitleGrade::Gold, TitleConditionType::Count, 100],
-            // 全体Streak（連続日数系・育児行動を問わない）。
-            [TitleId::OVERALL_STREAK_TIER1, null, '1週間連続育児ログ', TitleGrade::Bronze, TitleConditionType::Streak, 7],
-            [TitleId::OVERALL_STREAK_TIER2, null, '1ヶ月連続育児ログ', TitleGrade::Silver, TitleConditionType::Streak, 30],
-            [TitleId::OVERALL_STREAK_TIER3, null, '3ヶ月連続育児ログ', TitleGrade::Gold, TitleConditionType::Streak, 90],
-            // 育児行動別Streak（連続日数系）— 毎日発生しうる11行動のみ。
+            // Streak（育児行動別）— 毎日発生しうる11行動のみ。育児行動の表示順。
             [TitleId::DIAPER_CHANGE_STREAK_TIER1, CareActionId::DIAPER_CHANGE, '3日連続おむつ交換', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::DIAPER_CHANGE_STREAK_TIER2, CareActionId::DIAPER_CHANGE, '1週間連続おむつ交換', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::DIAPER_CHANGE_STREAK_TIER3, CareActionId::DIAPER_CHANGE, '1ヶ月連続おむつ交換', TitleGrade::Gold, TitleConditionType::Streak, 30],
