@@ -202,4 +202,10 @@ final class TitleId
     public const int WALK_PARK_STREAK_TIER2 = 83;
 
     public const int WALK_PARK_STREAK_TIER3 = 84;
+
+    public const int CHANGE_CLOTHES_STREAK_TIER1 = 85;
+
+    public const int CHANGE_CLOTHES_STREAK_TIER2 = 86;
+
+    public const int CHANGE_CLOTHES_STREAK_TIER3 = 87;
 }

@@ -1,13 +1,13 @@
 # TotoOps MVP 画面設計（Step 3）
 
 > 本ドキュメントは Laravel 実装前の **MVP 画面一覧・ルーティング・Controller構成** の設計です。
-> [features.md](features.md) のMVP機能一覧・[data-model.md](data-model.md) の8テーブルをもとに、実際の画面単位に落とし込みます。
+> [features.md](features.md) のMVP機能一覧・[data-model.md](data-model.md) のドメイン7テーブルをもとに、実際の画面単位に落とし込みます。
 
-## 進め方
+## 構成（いずれも確定済み）
 
 1. 画面一覧・画面遷移図（俯瞰）
 2. ルーティング一覧
-3. Controller構成 ← 今ここ
+3. Controller構成
 
 > 各画面のコントロール配置（ボタン・入力欄・タブなど）の詳細は [wireframes.md](wireframes.md) を参照。
 
@@ -25,11 +25,11 @@
 | S6 | X投稿文生成モーダル | 称号獲得モーダルから遷移。生成文のコピー・Xを開くリンク | X投稿文生成・コピー |
 | S7 | 設定画面（ハブ） | プロフィール編集・ピン留め設定・ログアウトへの入口（Phase 2以降のカスタム育児行動管理・卒業・広告への導線は器として用意。カスタム育児行動管理の画面設計自体は済み。→S14。全体集計への導線はS12側に置くため、ここには含めない） | 設定画面（ハブ） |
 | S8 | プロフィール編集画面 | 設定画面から遷移。現在のニックネーム・年代・子どもの年齢帯（末子）を表示し、その場で変更できる（閲覧専用画面は別途用意しない） | 設定画面（ハブ） |
-| S9 | ピン留め設定画面 | 常時8個の入れ替え（⑤`user_slot_configs`を編集） | 育児行動管理（常時8アイコン） |
-| S10 | 実施日時指定画面 | S3の8アイコンを長押し、またはS4の項目をタップした際に遷移する。`occurred_at`を指定して育児ログを記録する。**日時ピッカーの選択可能範囲は「7日前の00:00 〜 現在＋5分」に制限**する（[decisions.md](decisions.md) §1.3「育児ログの遡り操作は直近7日に制限する」） | 育児ログ登録 |
-| S11 | ログ編集画面 | S13（記録履歴画面）の各行の「・・・」から遷移する。**「実施日時の変更」または「削除」のみ**可能（育児行動の変更は不可。育児行動を変えたい場合は削除→S3/S4から再記録）。**`occurred_at`が7日より前の記録は変更・削除とも不可**（S13側で導線を非活性にする） | 育児ログ登録 |
+| S9 | ピン留め設定画面 | 常時8アイコンの入れ替え（⑤`user_slot_configs`を編集）。ピン留めは**最大8個**で、空きスロットがある状態も許容する（[data-model.md](data-model.md) ⑤） | 育児行動管理（常時8アイコン） |
+| S10 | 実施日時指定画面 | S3の8アイコンを長押し、またはS4の項目をタップした際に遷移する。`occurred_at`を指定して育児ログを記録する（実施日・実施時刻を別々に入力し、時刻は分精度）。**実施日ピッカーの選択可能範囲は「7日前 〜 今日」に制限**し、サーバー側は `occurred_at` を「7日前の00:00 〜 現在＋5分」で検証する（[decisions.md](decisions.md) §1.3「育児ログの遡り操作は直近7日に制限する」、[wireframes.md](wireframes.md) S10） | 育児ログ登録 |
+| S11 | ログ編集画面 | S13（記録履歴画面）の各行の「・・・」から遷移する。**「実施日時・メモの変更」または「削除」のみ**可能（育児行動の変更は不可。育児行動を変えたい場合は削除→S3/S4から再記録）。**`occurred_at`が「7日前の00:00」より前の記録は変更・削除とも不可**（S13側で導線を非活性にする） | 育児ログ登録 |
 | S12 | 期間別集計画面 | 日/週/月/**全期間**タブ＋グラフ＋育児行動ごとの件数内訳（全期間タブでは自分の累計実績を確認できる）。（全期間タブに称号一覧（図鑑）画面・全体タスク傾向（みんなの傾向）画面への導線を追加予定。Phase 2） | ダッシュボード集計 |
-| S13 | 記録履歴画面（タイムライン） | 日付ごとにグループ化したログ一覧（新しい順）。各行「・・・」→S11。**7日より前の記録は「・・・」を非活性にし、編集・削除できない理由を添える** | 記録履歴（タイムライン） |
+| S13 | 記録履歴画面（タイムライン） | 日付ごとにグループ化したログ一覧（新しい順）。各行「・・・」→S11。**`occurred_at`が「7日前の00:00」より前の記録は「・・・」を非活性にし、編集・削除できない理由を添える** | 記録履歴（タイムライン） |
 
 Phase 2以降の「全体タスク傾向」「卒業＆エンドロール」「称号一覧（図鑑）画面」等の画面はこの一覧には含めていません（MVP対象外）。
 
@@ -125,12 +125,12 @@ flowchart TD
 |---|---|---|---|---|
 | POST | `/profile` | `profile.store` | S2の登録処理 | 完了後`/`（S3）へリダイレクト |
 | POST | `/care-logs` | `care-logs.store` | 育児ログ記録 | S3短タップ／S10保存の共通エンドポイント。クライアントは短タップ時もタップ時刻（秒精度）を`occurred_at`として送信する（省略時の`now()`は二重送信防止が効かないフォールバック。[decisions.md](decisions.md) §1.3） |
-| PATCH | `/care-logs/{care_log}` | `care-logs.update` | S11保存 | `occurred_at`のみ変更可 |
+| PATCH | `/care-logs/{care_log}` | `care-logs.update` | S11保存 | `occurred_at`・`memo`のみ変更可 |
 | DELETE | `/care-logs/{care_log}` | `care-logs.destroy` | S11削除 | |
 | PATCH | `/settings/profile` | `settings.profile.update` | S8保存 | |
 | PUT | `/settings/slots` | `settings.slots.update` | S9保存 | ピン留め8個の入れ替え |
 | POST | `/logout` | `logout` | S7のログアウト | |
-| POST | `/locale` | `locale.update` | 言語切り替え（`JA\|EN` トグル） | cookieにロケール保存後、直前の画面へリダイレクト。全画面ヘッダー共通（[decisions.md](decisions.md) §1.3） |
+| POST | `/locale` | `locale.update` | 言語切り替え（`JA\|EN` トグル） | cookieにロケール保存後、直前の画面へリダイレクト。トグルの設置はS1・S7の2箇所のみで、全画面ヘッダーには常設しない（[decisions.md](decisions.md) §1.3） |
 
 **ルートを持たない画面**：S5（称号獲得モーダル）・S6（X投稿文生成モーダル）。S5は`POST /care-logs`のレスポンス（称号獲得情報を含む）を受けてVue側で自動表示する。S6はそのレスポンスに含まれる`achievement_text`（達成内容を表す一文。サーバー側で組み立て済み。[decisions.md](decisions.md) §1.3）を、絵文字・称号名・ハッシュタグ等の固定レイアウトにクライアント側で埋め込むのみで、いずれも追加のサーバー往復は不要。
 
@@ -154,12 +154,12 @@ flowchart TD
 | S4 「その他」育児行動選択画面 | GET `/care-actions/other` | `CareActionController` | `other()` | — | — |
 | S10 実施日時指定画面 | GET `/care-logs/create` | `CareLogController` | `create()` | — | — |
 | (S3短タップ／S10保存) | POST `/care-logs` | `CareLogController` | `store()` | `StoreCareLogRequest`（`occurred_at`の範囲は「7日前の00:00 〜 現在＋5分」） | — |
-| S11 ログ編集画面 | GET `/care-logs/{care_log}/edit` | `CareLogController` | `edit()` | — | `CareLogPolicy@update`（他人の記録IDを弾く／7日より前の記録を弾く） |
-| (S11保存) | PATCH `/care-logs/{care_log}` | `CareLogController` | `update()` | `UpdateCareLogRequest`（`occurred_at`のみ許可。範囲は`store`と同じ） | `CareLogPolicy@update` |
-| (S11削除) | DELETE `/care-logs/{care_log}` | `CareLogController` | `destroy()` | — | `CareLogPolicy@delete`（他人の記録IDを弾く／7日より前の記録を弾く） |
+| S11 ログ編集画面 | GET `/care-logs/{care_log}/edit` | `CareLogController` | `edit()` | — | `CareLogPolicy@update`（他人の記録IDを弾く／`occurred_at`が「7日前の00:00」より前の記録を弾く） |
+| (S11保存) | PATCH `/care-logs/{care_log}` | `CareLogController` | `update()` | `UpdateCareLogRequest`（`occurred_at`・`memo`のみ許可。`occurred_at`の範囲は`store`と同じ） | `CareLogPolicy@update` |
+| (S11削除) | DELETE `/care-logs/{care_log}` | `CareLogController` | `destroy()` | — | `CareLogPolicy@delete`（他人の記録IDを弾く／`occurred_at`が「7日前の00:00」より前の記録を弾く） |
 | S7 設定画面（ハブ） | GET `/settings` | `SettingsController` | `index()` | — | — |
 | S9 ピン留め設定画面 | GET `/settings/slots` | `SlotConfigController` | `edit()` | — | — |
-| (S9保存) | PUT `/settings/slots` | `SlotConfigController` | `update()` | `UpdateSlotConfigRequest`（重複不可・許可された育児行動のみ） | 不要（同上の理由） |
+| (S9保存) | PUT `/settings/slots` | `SlotConfigController` | `update()` | `UpdateSlotConfigRequest`（8個以下・重複不可・許可された育児行動のみ） | 不要（同上の理由） |
 | S12 期間別集計画面 | GET `/stats` | `StatsController` | `index()` | — | — |
 | S13 記録履歴画面 | GET `/history` | `HistoryController` | `index()` | — | — |
 

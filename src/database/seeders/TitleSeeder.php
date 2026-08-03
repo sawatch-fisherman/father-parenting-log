@@ -95,7 +95,7 @@ class TitleSeeder extends Seeder
             [TitleId::OVERALL_STREAK_TIER1, null, '1週間連続育児ログ', TitleGrade::Bronze, TitleConditionType::Streak, 7],
             [TitleId::OVERALL_STREAK_TIER2, null, '1ヶ月連続育児ログ', TitleGrade::Silver, TitleConditionType::Streak, 30],
             [TitleId::OVERALL_STREAK_TIER3, null, '3ヶ月連続育児ログ', TitleGrade::Gold, TitleConditionType::Streak, 90],
-            // 育児行動別Streak（連続日数系）— 毎日発生しうる10行動のみ。
+            // 育児行動別Streak（連続日数系）— 毎日発生しうる11行動のみ。
             [TitleId::DIAPER_CHANGE_STREAK_TIER1, CareActionId::DIAPER_CHANGE, '3日連続おむつ交換', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::DIAPER_CHANGE_STREAK_TIER2, CareActionId::DIAPER_CHANGE, '1週間連続おむつ交換', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::DIAPER_CHANGE_STREAK_TIER3, CareActionId::DIAPER_CHANGE, '1ヶ月連続おむつ交換', TitleGrade::Gold, TitleConditionType::Streak, 30],
@@ -126,6 +126,9 @@ class TitleSeeder extends Seeder
             [TitleId::WALK_PARK_STREAK_TIER1, CareActionId::WALK_PARK, '3日連続公園遊び', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::WALK_PARK_STREAK_TIER2, CareActionId::WALK_PARK, '1週間連続公園遊び', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::WALK_PARK_STREAK_TIER3, CareActionId::WALK_PARK, '1ヶ月連続公園遊び', TitleGrade::Gold, TitleConditionType::Streak, 30],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER1, CareActionId::CHANGE_CLOTHES, '3日連続着替え', TitleGrade::Bronze, TitleConditionType::Streak, 3],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER2, CareActionId::CHANGE_CLOTHES, '1週間連続着替え', TitleGrade::Silver, TitleConditionType::Streak, 7],
+            [TitleId::CHANGE_CLOTHES_STREAK_TIER3, CareActionId::CHANGE_CLOTHES, '1ヶ月連続着替え', TitleGrade::Gold, TitleConditionType::Streak, 30],
         ];
 
         foreach ($titles as $sortOrder => [$id, $careActionId, $name, $grade, $conditionType, $conditionValue]) {

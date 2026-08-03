@@ -11,18 +11,26 @@
 - **個人情報最小限**：認証テーブルにプロフィール情報を混ぜない。メール・パスワードは保持しない（SSO・Web Push前提）
 - **最終ログイン日時は持たない**：活動判定は「育児ログ登録日（`care_logs.occurred_at`）」、トークン鮮度は `personal_access_tokens.last_used_at`（内部のみ）
 
-## テーブル一覧（MVP・8テーブル）
+## テーブル一覧（ドメイン7テーブル＋将来1）
 
-| # | テーブル | 分類 | 状態 |
-|---|---|---|---|
-| 1 | `users` | マスタ（認証） | ✅ 確定 |
-| 2 | `profiles` | マスタ | ✅ 確定 |
-| 3 | `care_actions` | マスタ | ✅ 確定 |
-| 4 | `care_logs` | **ログ** | ✅ 確定 |
-| 5 | `user_slot_configs` | 設定 | ✅ 確定 |
-| 6 | `titles` | マスタ | ✅ 確定 |
-| 7 | `user_titles` | ログ寄り | ✅ 確定 |
-| 8 | `personal_access_tokens` | システム | ✅ 確定 |
+TotoOps固有のドメインテーブルのみを挙げる。Laravel標準の`sessions`・`cache`・`cache_locks`・`jobs`・`job_batches`・`failed_jobs`は含まない。
+
+**「設計」＝本ドキュメントでスキーマが確定しているか。「MVP実装」＝M0で実際にマイグレーションを作るか**（[implementation-plan.md](implementation-plan.md) M0）。⑧のみ両者が食い違うため、1列にまとめず分けている。
+
+| # | テーブル | 分類 | 設計 | MVP実装 |
+|---|---|---|---|---|
+| 1 | `users` | マスタ（認証） | ✅ 確定 | ✅ 作る |
+| 2 | `profiles` | マスタ | ✅ 確定 | ✅ 作る |
+| 3 | `care_actions` | マスタ | ✅ 確定 | ✅ 作る |
+| 4 | `care_logs` | **ログ** | ✅ 確定 | ✅ 作る |
+| 5 | `user_slot_configs` | 設定 | ✅ 確定 | ✅ 作る |
+| 6 | `titles` | マスタ | ✅ 確定 | ✅ 作る |
+| 7 | `user_titles` | ログ寄り | ✅ 確定 | ✅ 作る |
+| 8 | `personal_access_tokens` | システム | ✅ 確定 | ❌ 作らない（※） |
+
+> ※ ⑧を追加するのは、**セッションCookieを保持できないクライアント（ブラウザ以外）にトークン認証を提供する段階**。現時点のロードマップで該当するのは将来案の NativePHP モバイル版のみで、MVP〜Phase 3 には該当する機能がない（Phase 3 の Web Push は VAPID 鍵ベースの認証で、購読情報も別テーブルになるため ⑧ とは無関係）。MVP は Inertia の同一オリジン構成＋セッション認証で完結するため Sanctum 自体が不要（[decisions.md](decisions.md) §1.5・§3.1、[implementation-plan.md](implementation-plan.md)「認証方式の整理／Sanctum 先送り」）。
+>
+> **作らないのに設計だけ先に固めてある理由**：`users.id` が ULID のため `tokenable_id` の型が Sanctum 標準と異なるという、**導入時に必ず引っかかる論点**を忘れないうちに記録しておくため（対処法は ⑧ の節を参照）。⑧ の節ごと削除しないこと。
 
 ---
 
@@ -46,6 +54,7 @@ erDiagram
         varchar20 provider UK "認証プロバイダ"
         varchar255 provider_id UK "プロバイダ側ID"
         varchar100 remember_token "ログイン保持トークン"
+        datetime withdrawn_at "退会日時; NULL=在籍中"
     }
     PROFILES["PROFILES（プロフィール）"] {
         bigint id PK
@@ -53,6 +62,7 @@ erDiagram
         varchar50 nickname "ニックネーム"
         tinyint age_group "年代"
         tinyint child_age_group "子どもの年齢帯(末子)"
+        datetime graduated_at "卒業日時; NULL=育児中, Phase2+"
     }
     CARE_ACTIONS["CARE_ACTIONS（育児行動）"] {
         bigint id PK "1〜999はTotoOps標準行の予約域"
@@ -65,6 +75,8 @@ erDiagram
         char26 user_id FK, UK "ユーザーID; 複合INDEXにも参加: (user_id,occurred_at)"
         bigint care_action_id FK, UK "育児行動ID"
         datetime occurred_at UK "実施日時; 複合INDEXにも参加: (user_id,occurred_at)"
+        tinyint age_group "記録時点の年代(スナップショット)"
+        tinyint child_age_group "記録時点の子どもの年齢帯(スナップショット)"
         varchar255 memo "メモ"
     }
     USER_SLOT_CONFIGS["USER_SLOT_CONFIGS（ピン留め設定）"] {
@@ -88,7 +100,7 @@ erDiagram
         bigint title_id FK, UK "称号ID"
         timestamp unlocked_at "獲得日時; 複合INDEXの一部: (user_id,unlocked_at)"
     }
-    PERSONAL_ACCESS_TOKENS["PERSONAL_ACCESS_TOKENS（認証トークン）"] {
+    PERSONAL_ACCESS_TOKENS["PERSONAL_ACCESS_TOKENS（認証トークン・MVP対象外）"] {
         bigint id PK
         varchar255 tokenable_type "認証対象の型; 複合INDEXの一部: (tokenable_type,tokenable_id)"
         char26 tokenable_id "認証対象ID; 複合INDEXの一部: (tokenable_type,tokenable_id)"
@@ -104,6 +116,7 @@ erDiagram
 
 補足：
 
+- **`PERSONAL_ACCESS_TOKENS`（⑧）だけはMVPで作らない**（エイリアスに`MVP対象外`と付記しているのはこのため）。設計として確定しているので図には含めているが、M0のマイグレーション対象は残り7テーブルのみ。追加する条件は上記「テーブル一覧」の※を参照。
 - `PERSONAL_ACCESS_TOKENS`と`USERS`の関係はSanctumのポリモーフィック関連（`tokenable_type`/`tokenable_id`）であり、DBレベルの実FK制約ではない。`tokenable_type`/`tokenable_id`はSanctum標準の複合インデックス対象（⑧参照）。
 - `CARE_ACTIONS`と`TITLES`の関係は`care_action_id`がNULL許容（全体合計称号）のため、破線的な「0または1」の関係として描いている。
 - `created_at`／`updated_at`は全テーブル共通のため、見やすさのためこの図では省略している（詳細は各テーブルの節を参照）。
@@ -218,7 +231,8 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 - S10（実施日時指定画面）は分精度入力のため、既存記録と「育児行動×日時」が衝突した場合は「同じ日時に同じ記録があります」という分かりやすいバリデーションエラーを返す（同一分に同じ育児行動を2回記録したい場合は、1分ずらして登録する運用を許容する）。
 - **`occurred_at`の上限バリデーション**：`occurred_at <= now() + 5分`をアプリ層（FormRequest）で検証する（DB制約ではない）。育児記録は過去の行動を記録するものであり未来日時は原則無意味だが、短タップ（即時記録）はクライアント端末のタイムスタンプをそのまま送信するため、端末クロックのわずかなズレ（自動時刻同期OFFの端末・安価な端末のドリフト等）で正当な「今記録した」操作が誤って弾かれないよう、5分の許容バッファを持たせる（[decisions.md](decisions.md) §1.3）。
 - **`occurred_at`の下限バリデーション（遡り7日の締め）**：`occurred_at >= 7日前の00:00`（`config('totoops.care_log.backdate_days')`）をアプリ層で検証する（DB制約ではない）。上記の上限（`now() + 5分`）と合わせ、`occurred_at`の有効範囲は「**7日前の00:00 〜 現在＋5分**」となる。この制限は**作成・`occurred_at`の変更・削除の3操作すべて**に適用し、8日以上前の期間を不変にする（[decisions.md](decisions.md) §1.3「育児ログの遡り操作は直近7日に制限する」）。目的は、上記スナップショットと実際の年代のズレを上限で縛ることと、Phase 2 の`aggregate_*`を再計算不要にすること。締めを過ぎた記録の削除は問い合わせ窓口で個別に対応する（[privacy.md](privacy.md) §9）。
-- **事後編集は`occurred_at`のみ許可**。`care_action_id`の変更は不可とし、育児行動を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_action_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。なお`age_group`・`child_age_group`は**編集対象に含めない**（記録時点の事実として凍結するため、ユーザーからも変更できない）。
+- **事後編集は`occurred_at`と`memo`のみ許可**。`care_action_id`の変更は不可とし、育児行動を変えたい場合はユーザーに削除→再作成（delete-insert）させる（[decisions.md](decisions.md) §1.3、[screens.md](screens.md) S11）。`occurred_at`の変更先が既存行と衝突する場合は`UNIQUE(user_id, care_action_id, occurred_at)`違反となるため、アプリ層で分かりやすいバリデーションエラーを返す。`memo`は称号判定にも集計にも関与しない表示専用の列のため、変更してもUNIQUE制約・称号・集計のいずれにも影響しない（自由入力欄に意図せず個人情報を書いた場合にユーザー自身が消せるようにするため編集を許す。[privacy.md](privacy.md) §9）。なお`age_group`・`child_age_group`は**編集対象に含めない**（記録時点の事実として凍結するため、ユーザーからも変更できない）。
+- **`memo`の表示先はS13（記録履歴画面）**（[wireframes.md](wireframes.md) S13）。S12（集計）は件数の集計のみを扱うため`memo`を表示しない。
 
 ---
 
@@ -230,7 +244,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 | --- | --- | --- | --- |
 | `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 主キー（連番。IDが露出しないため） |
 | `user_id` | CHAR(26) | NOT NULL, FK→`users.id` ON DELETE CASCADE | |
-| `slot_position` | TINYINT UNSIGNED | NOT NULL | 1〜8（範囲はアプリ層バリデーションで担保）。画面上の並び順に対応 |
+| `slot_position` | TINYINT UNSIGNED | NOT NULL | 1〜8（範囲はアプリ層バリデーションで担保）。画面上の並び順に対応。行数は**1ユーザーあたり最大8行**で、8行未満（空きスロットあり）も正常な状態として許容する（下記「行数の不変条件」参照） |
 | `care_action_id` | BIGINT UNSIGNED | NOT NULL, FK→`care_actions.id` ON DELETE CASCADE | ピン留めされている育児行動。MVPでは③のTotoOps定義17個のいずれか。Phase 2以降は自分のカスタムも対象になり得る |
 | `created_at` / `updated_at` | TIMESTAMP | NOT NULL | |
 
@@ -243,8 +257,12 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 - プロフィール登録完了時に、アプリ層の「共通おすすめ初期8個」設定（③参照）を使って本テーブルに8行を自動作成する。
 - 登録後はユーザーが設定画面から自由に入れ替え可能（本テーブルをupsertするだけ）。
-- **「その他」ボタンの一覧** ＝ `care_actions`のTotoOps定義行（Phase 2以降は自分のカスタムも含む）のうち、本テーブルに`care_action_id`として存在しないもの（＝現在ピン留め中の8個を除いた残り）。MVPでは17個中8個を除いた9個が該当する。
-- `care_action_id`の`ON DELETE CASCADE`は、Phase 2以降でユーザーカスタムを物理削除する際にピン留めも道連れで解除されるようにするためのもの（③参照）。TotoOps定義行はSeeder固定で削除されないため、MVP時点でこのカスケードが発生することはない。
+- **「その他」ボタンの一覧** ＝ `care_actions`のTotoOps定義行（Phase 2以降は自分のカスタムも含む）のうち、本テーブルに`care_action_id`として存在しないもの（＝現在ピン留め中のものを除いた残り）。MVPでは17個からピン留め済みの8個を除いた9個が該当する（ピン留めが8個未満なら、その分だけ「その他」の件数が増える）。
+- **行数の不変条件は「1ユーザーあたり最大8行」**（常に8行ではない）。プロフィール登録直後は必ず8行だが、Phase 2以降にユーザーカスタム育児行動を物理削除すると下記の`ON DELETE CASCADE`でピン留めも消え、**7行以下になりうる**。この状態を異常として扱わず、正常な状態として受け入れる（[decisions.md](decisions.md) §1.3）。
+  - S3（記録画面）は4列×2段のグリッド枠を保ったまま、行が無い`slot_position`を**空きスロット**として描画する（タップするとS9へ誘導）。
+  - S9（ピン留め設定画面）の保存バリデーションも「**8個以下**・重複なし・`slot_position` 1〜8」とし、8個未満のまま保存できる。
+  - 未ピン留めの育児行動を自動で繰り上げ補充する方式は採らない：ユーザーが選んでいないアイコンが勝手にグリッドに現れるのは、「8アイコンの中身はユーザーが自由にピン留めできる」という本テーブルの前提（[decisions.md](decisions.md) §1.3）と矛盾するため。
+- `care_action_id`の`ON DELETE CASCADE`は、Phase 2以降でユーザーカスタムを物理削除する際にピン留めも道連れで解除されるようにするためのもの（③参照）。TotoOps定義行はSeeder固定で削除されないため、MVP時点でこのカスケードが発生することはない（＝MVPの範囲では行数は常に8行になる）。
 - `care_action_id`には「TotoOps定義（`user_id IS NULL`）、または自分自身のカスタム（`user_id`が自分）」以外を設定できないようにする必要がある。これはDBのFKだけでは表現できない条件（他ユーザーのカスタムIDを設定させない）なので、アプリ層のバリデーションで担保する（Phase 2以降、カスタム対応時に効いてくる）。
 - **JSON配列案（不採用）**：`slot_position`／`care_action_id`の2カラムをやめ、1ユーザー1行で並び順を表す`care_action_id`のJSON配列（例：`[3,1,6,8,7,2,4,5]`）にまとめる案も検討したが、不採用とした。理由：(1) 本テーブルは「ログ」ではなく「設定」であり1ユーザー最大8行で頭打ちのため、行数削減のメリットがほぼ無い（「ログ/マスタ分離」の原則が懸念する高頻度増加はそもそも該当しない）、(2) JSON化すると配列内の個々の要素にはFK制約が効かず、カスタム育児行動削除時の自動整合性維持（`ON DELETE CASCADE`）や重複ピン留め防止（`UNIQUE(user_id, care_action_id)`）をアプリ層で肩代わりする必要が生じる、(3) `care_actions`とのJOINが`JSON_TABLE`やアプリ側デコード＋再ソートを要し、Eloquentの標準的な`hasMany`リレーションが使えなくなる（8行/ユーザー規模では速度自体は問題にならないが、実装の複雑さが増す）。
 
@@ -292,7 +310,7 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 - `titles`はユーザー個別ではなく全ユーザー共通のマスタなので、`care_action_id`には**TotoOps定義（`user_id IS NULL`）の行のみ**を設定できるようにする（特定ユーザーのカスタム育児行動を指す称号は成立しないため）。DBのFKだけでは表現できないため、Seeder投入時・管理側での運用ルールとして担保する。`ON DELETE RESTRICT`にしているのも、称号が参照している育児行動の行を誤って削除できないようにするため（TotoOps定義行はSeeder固定で通常は削除されない）。
   - **ユーザーカスタム育児行動（Phase 2以降）の実績は、`care_action_id IS NULL`の全体合計称号でカバーする**。カスタム育児行動のログも`care_logs`に入るため、全体合計称号は追加設計なしでカウント対象に含む。カスタム育児行動そのものに専用の称号を作る方式は採らない：(1) `titles`に`user_id`を持たせるとマスタではなくなり、ログ／マスタ分離の原則（[decisions.md](decisions.md) §1.3）から外れる、(2) `ON DELETE RESTRICT`のため称号が紐づいたカスタム育児行動を物理削除できなくなり、「生存数8個の上限を超えたら1つ削除する」という運用（③参照）と噛み合わない、(3) TotoOps側が「おむつ交換職人」のような固有の称号名を用意できず、機械生成の汎用名になって称号の面白さが薄れる。
 - 具体的なしきい値（`condition_value`の数値）は確定済み。Countは育児行動の**頻度帯**ごとの共通値（高頻度 50/200/500・中頻度 20/100/300・低頻度 10/30/100）、Streakは全体版 7/30/90日・育児行動別版 3/7/30日（[decisions.md](decisions.md) §1.3「称号名・等級・しきい値の確定内容」）。
-- **`id`の採番規則**：③`care_actions`の標準17行と同じく、**Seederで固定のIDを明示的に指定**する（`1`から連番で、Count（`1`〜`51`）→ 全体Streak（`52`〜`54`）→ 育児行動別Streak（`55`〜`84`）の順。各IDは`App\Support\TitleId`に名前付き定数として定義する）。ユーザーが行を作らないテーブルなので、③と違い予約域の確保は不要（自動採番と衝突する行が生まれない）。`care_action_id * 10 + 段階`のような構造化採番は採らない：称号の絞り込み・並べ替えは`care_action_id`・`condition_type`・`sort_order`で足りるうえ、Countのしきい値が育児行動ごとに異なる以上ID側に規則を持たせても保守の手間が増えるだけだから（[decisions.md](decisions.md) §1.3）。理由：`name`（称号名）も`condition_value`（しきい値）も後から調整されうるため、Seederの同一性キーを`name`にすると称号名を修正した瞬間に既存行が更新されず**重複行が増える**（`titles.name`はUNIQUEではない）。⑦`user_titles.title_id`は`ON DELETE RESTRICT`かつ獲得済み行は永久保持のため、一度増えた重複行は削除もできない。定数名は変わりうる表示ラベルではなく「対象育児行動＋条件種別＋段階」（例：`TitleId::DIAPER_CHANGE_COUNT_TIER1`）で構成する。なお③と同じく、Seederは保存前に`$model->incrementing = false;`を立てる（③参照）。
+- **`id`の採番規則**：③`care_actions`の標準17行と同じく、**Seederで固定のIDを明示的に指定**する（`1`から連番で、Count（`1`〜`51`）→ 全体Streak（`52`〜`54`）→ 育児行動別Streak（`55`〜`87`）の順。各IDは`App\Support\TitleId`に名前付き定数として定義する）。ユーザーが行を作らないテーブルなので、③と違い予約域の確保は不要（自動採番と衝突する行が生まれない）。`care_action_id * 10 + 段階`のような構造化採番は採らない：称号の絞り込み・並べ替えは`care_action_id`・`condition_type`・`sort_order`で足りるうえ、Countのしきい値が育児行動ごとに異なる以上ID側に規則を持たせても保守の手間が増えるだけだから（[decisions.md](decisions.md) §1.3）。理由：`name`（称号名）も`condition_value`（しきい値）も後から調整されうるため、Seederの同一性キーを`name`にすると称号名を修正した瞬間に既存行が更新されず**重複行が増える**（`titles.name`はUNIQUEではない）。⑦`user_titles.title_id`は`ON DELETE RESTRICT`かつ獲得済み行は永久保持のため、一度増えた重複行は削除もできない。定数名は変わりうる表示ラベルではなく「対象育児行動＋条件種別＋段階」（例：`TitleId::DIAPER_CHANGE_COUNT_TIER1`）で構成する。なお③と同じく、Seederは保存前に`$model->incrementing = false;`を立てる（③参照）。
 
 ---
 
@@ -323,15 +341,19 @@ TotoOps定義の育児行動とユーザーカスタム育児行動を同一テ�
 
 ---
 
-## ⑧ `personal_access_tokens`（システム）
+## ⑧ `personal_access_tokens`（システム・**MVPでは作らない**）
 
 Laravel Sanctumが標準提供するテーブル。認証トークンを管理する。
+
+**追加する条件**：セッションCookieを保持できないクライアント（ブラウザ以外）にトークン認証を提供する段階。現時点のロードマップで該当するのは将来案の NativePHP モバイル版のみ。MVP〜Phase 3 には該当機能がないため作らない（上記「テーブル一覧」の※、[implementation-plan.md](implementation-plan.md)「認証方式の整理／Sanctum 先送り」）。
+
+本節を先に書いてあるのは、`users.id` が ULID であることに起因する `tokenable_id` の型の論点（下記補足）が導入時に必ず問題になるため。**実装しないからといって本節を削除しないこと。**
 
 | カラム | 型 | 制約 | 説明 |
 | --- | --- | --- | --- |
 | `id` | BIGINT UNSIGNED | PK, AUTO_INCREMENT | Sanctum標準のまま（下記補足参照） |
 | `tokenable_type` | VARCHAR(255) | NOT NULL | ポリモーフィック関連の型（常に`App\Models\User`） |
-| `tokenable_id` | CHAR(26) | NOT NULL | `users.id`（ULID）。Sanctum標準は`UNSIGNED BIGINT`だが、`users.id`がULIDのため型変更が必須 |
+| `tokenable_id` | CHAR(26) | NOT NULL | `users.id`（ULID）。Sanctum標準の`UNSIGNED BIGINT`ではなく`CHAR(26)`になる（`Schema::morphUsingUlids()`により自動。マイグレーションの手書き換えは不要。下記補足参照） |
 | `name` | VARCHAR(255) | NOT NULL | トークン名（例：`web-login`） |
 | `token` | VARCHAR(64) | NOT NULL, UNIQUE | トークンのハッシュ値 |
 | `abilities` | TEXT | NULL | 権限スコープ（JSON） |
@@ -342,7 +364,9 @@ Laravel Sanctumが標準提供するテーブル。認証トークンを管理�
 補足：
 
 - 主キー`id`はSanctum標準のauto-incrementのまま使う。共通方針（IDが露出しないテーブルは連番）とも一致しており、`id`はAPI/URLに露出せず認証はハッシュ化された`token`列で行うためULID化のメリットがない。パッケージ標準実装に沿う方が将来のアップデート時の互換性リスクも低い。
-- `tokenable_id`はポリモーフィック関連の対象（`users.id`）の型に合わせる必要があるため、Sanctum標準の`UNSIGNED BIGINT`から`CHAR(26)`への変更が必須。
+- `tokenable_id`はポリモーフィック関連の対象（`users.id`）の型に合わせる必要があるため、Sanctum標準の`UNSIGNED BIGINT`ではなく`CHAR(26)`になる。**ただしSanctumのマイグレーションを手で書き換える必要はない**：`AppServiceProvider::boot()`で`Schema::morphUsingUlids()`を1度呼んでおけば、Sanctum標準のマイグレーションが呼ぶ`$table->morphs('tokenable')`が自動的に`ulidMorphs()`（＝`CHAR(26)`）へ分岐する。`Illuminate\Database\Schema\Blueprint::morphs()`が`Builder::$defaultMorphKeyType`を見て`numericMorphs()`／`uuidMorphs()`／`ulidMorphs()`を切り替える実装で、**ULID主キーのためにフレームワークが用意した公式の切り替え**（Laravel 13の`vendor/laravel/framework`ソースで確認済み）。パッケージ標準実装から外れる対応ではないため、上記「主キー`id`はSanctum標準のまま使う」方針とも矛盾しない。
+  - **設定漏れは静かには壊れない**：`morphUsingUlids()`を呼ばずに`vendor:publish`したマイグレーションをそのまま流すと`tokenable_id`が`BIGINT`のまま作られるが、MySQLのstrictモードで最初の`createToken()`時に型不一致で例外になるため、テストで確実に捕捉できる。誤った型のまま動き続けることはない。
+  - **この対応が要るのはSanctumを実際に導入する段階**（将来のAPI／NativePHP版）。MVPはInertiaの同一オリジン構成＋セッション認証で完結するため**Sanctum自体が不要**（[decisions.md](decisions.md) §1.5・§3.1、[implementation-plan.md](implementation-plan.md)「認証方式の整理／Sanctum先送り」）。したがって「`users.id`をULIDにするとSanctumが使えなくなるのでは」という懸念は成立せず、ULID採用の是非を左右する材料にはならない（[decisions.md](decisions.md) §1.3「主キー形式の判断基準」の`users`の例外に関する補足を参照）。
 - `Prunable`適用対象（[decisions.md](decisions.md) §1.3）：`expires_at`が期限切れ、または`expires_at`が`NULL`で`last_used_at`がN日以上前のトークンを削除する。Nの具体値は未決#15。
 - `last_used_at`は集計・他ユーザーに公開しない（[privacy.md](privacy.md)「最終ログイン日時は公開しない」と整合）。
 - `INDEX (tokenable_type, tokenable_id)` — Sanctum標準の複合インデックス（ポリモーフィック関連の検索用）。
