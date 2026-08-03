@@ -137,7 +137,7 @@ Google SSO 専用。個人情報は持たず、認証の同定のみを担う。
 | `created_at` | TIMESTAMP | NOT NULL | |
 | `updated_at` | TIMESTAMP | NOT NULL | 行更新時刻。※**ログイン日時ではない** |
 
-- **ユニーク制約**：`UNIQUE(provider, provider_id)`（同一アカウントの二重登録防止）。`provider_id`を NULL 許容にしても、MySQL は UNIQUE 内の NULL 同士を別物として扱うため、退会者が複数いても衝突しない
+- **ユニーク制約**：`UNIQUE(provider, provider_id)`（同一アカウントの二重登録防止）。`provider_id`を NULL 許容にしても、MySQL は UNIQUE 内の NULL 同士を別物として扱うため、退会者が複数いても衝突しない。**逆に固定値のセンチネル（`99999`など）は使えない**：退会者は全員`provider = 'withdrawn'`になるため、`provider_id`まで固定値だと2人目の退会が重複キーエラーで失敗する（性能面を含む詳細な不採用理由は [decisions.md](decisions.md) §1.1「退会処理の方式」）
 - **メール・パスワードは保持しない**（Web Pushのみ・個人情報最小限。未決#1 の有力案で確定）
 - **ニックネーム／年代／子の年齢帯は持たない** → `profiles`（②）へ分離
 - **最終ログイン日時カラムは持たない**（活動指標は育児ログ登録日）。`withdrawn_at`はこれとは別物で、活動指標ではなく状態遷移の記録であり、外部には公開しない
