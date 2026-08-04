@@ -1,0 +1,31 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Enums\TitleConditionType;
+use App\Enums\TitleGrade;
+use App\Models\Title;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Title>
+ */
+class TitleFactory extends Factory
+{
+    /**
+     * モデルのデフォルト状態を定義する。
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'care_action_id' => null,
+            'name' => fake()->words(2, true),
+            'grade' => TitleGrade::Bronze,
+            'condition_type' => TitleConditionType::Count,
+            'condition_value' => fake()->numberBetween(1, 100),
+            'sort_order' => fake()->numberBetween(1, 100),
+        ];
+    }
+}

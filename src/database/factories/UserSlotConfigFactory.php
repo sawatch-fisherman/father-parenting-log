@@ -2,13 +2,15 @@
 
 namespace Database\Factories;
 
+use App\Models\CareAction;
 use App\Models\User;
+use App\Models\UserSlotConfig;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<User>
+ * @extends Factory<UserSlotConfig>
  */
-class UserFactory extends Factory
+class UserSlotConfigFactory extends Factory
 {
     /**
      * モデルのデフォルト状態を定義する。
@@ -18,8 +20,9 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'provider' => 'google',
-            'provider_id' => fake()->unique()->numerify('##################'),
+            'user_id' => User::factory(),
+            'slot_position' => fake()->numberBetween(1, 8),
+            'care_action_id' => CareAction::factory(),
         ];
     }
 }

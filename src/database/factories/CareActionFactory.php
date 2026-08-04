@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\User;
+use App\Models\CareAction;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<User>
+ * @extends Factory<CareAction>
  */
-class UserFactory extends Factory
+class CareActionFactory extends Factory
 {
     /**
      * モデルのデフォルト状態を定義する。
@@ -18,8 +18,9 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'provider' => 'google',
-            'provider_id' => fake()->unique()->numerify('##################'),
+            'user_id' => null,
+            'name' => fake()->words(2, true),
+            'sort_order' => fake()->numberBetween(1, 100),
         ];
     }
 }

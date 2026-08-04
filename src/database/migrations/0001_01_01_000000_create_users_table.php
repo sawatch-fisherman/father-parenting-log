@@ -7,29 +7,29 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * マイグレーションを実行する。
      */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->ulid('id')->primary();
+            $table->string('provider', 20);
+            // 退会時に NULL を入れるため NULL 許容。MySQL は UNIQUE 内の NULL 同士を別物として
+            // 扱うので、退会者が複数いても下記の UNIQUE(provider, provider_id) に衝突しない。
+            $table->string('provider_id')->nullable();
             $table->rememberToken();
+            // 退会日時（NULL = 在籍中）。退会は行を削除せず provider_id 等を破壊する in-place
+            // 匿名化で行うため（行は care_logs の FK 親として残す必要がある）、SoftDeletes の
+            // deleted_at は使わない（docs/decisions.md §1.1・docs/data-model.md ①）。
+            $table->dateTime('withdrawn_at')->nullable();
             $table->timestamps();
-        });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
+            $table->unique(['provider', 'provider_id']);
         });
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+            $table->foreignUlid('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');
@@ -38,12 +38,11 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * マイグレーションをロールバックする。
      */
     public function down(): void
     {
         Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
 };
