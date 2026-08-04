@@ -41,6 +41,12 @@ class DatabaseFoundationTest extends TestCase
         $this->assertSame(range(1, 17), $sortOrders);
     }
 
+    /**
+     * Seederが投入するマスタ行が、`CareActionId`・`TitleId`の固定IDで引けることを検証する。
+     *
+     * 固定IDはコード側から直接参照する前提なので、Seederの並べ替えなどでIDがずれると
+     * 参照側が黙って別の行を掴む（docs/data-model.md ③⑥）。
+     */
     public function test_standard_master_rows_keep_their_fixed_ids(): void
     {
         // Arrange
@@ -56,6 +62,12 @@ class DatabaseFoundationTest extends TestCase
         $this->assertSame(CareActionId::DIAPER_CHANGE, $title->care_action_id);
     }
 
+    /**
+     * TotoOps標準の育児行動が、カスタム用に予約したID域（`CUSTOM_ID_FLOOR`以降）へ
+     * はみ出していないことを検証する。
+     *
+     * Seeder投入済みの状態そのものが検証対象のため、実行（Act）にあたる操作を持たない。
+     */
     public function test_standard_care_actions_stay_inside_the_reserved_id_range(): void
     {
         // Arrange
@@ -104,6 +116,11 @@ class DatabaseFoundationTest extends TestCase
         $this->assertIsInt(CareAction::factory()->create()->id);
     }
 
+    /**
+     * Seederを2回実行してもマスタ行が増えない（冪等である）ことを検証する。
+     *
+     * マスタの追加は再Seedで行う運用なので、冪等でないと実行のたびに行が重複していく。
+     */
     public function test_seeding_twice_does_not_duplicate_master_rows(): void
     {
         // Arrange
@@ -120,6 +137,12 @@ class DatabaseFoundationTest extends TestCase
         $this->assertSame($titleCount, Title::query()->count());
     }
 
+    /**
+     * 全マイグレーションが依存関係の逆順にロールバックできることを検証する。
+     *
+     * 外部キーを張った順序どおりに落とせないと`migrate:rollback`が途中で失敗し、
+     * スキーマが中途半端な状態で残る。
+     */
     public function test_all_migrations_roll_back_in_reverse_dependency_order(): void
     {
         // Act

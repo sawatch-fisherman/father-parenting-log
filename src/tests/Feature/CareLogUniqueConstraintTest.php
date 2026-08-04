@@ -14,6 +14,8 @@ class CareLogUniqueConstraintTest extends TestCase
     use LazilyRefreshDatabase;
 
     /**
+     * 同一ユーザー・同一育児行動・同一日時の育児ログが、2件目でDBに弾かれることを検証する。
+     *
      * クライアント側の送信ボタンdisableが間に合わなかった連打を、このUNIQUE制約が
      * セーフティネットとして防ぐ（docs/decisions.md §1.3）。`occurred_at` は秒精度で
      * 保存されるため、サブ秒しか違わない連打も同一秒に丸められてここで弾かれる

@@ -20,6 +20,8 @@ class InitialSlotConfigurationTest extends TestCase
     use LazilyRefreshDatabase;
 
     /**
+     * 初期おすすめ8個が、重複のない8件のTotoOps標準育児行動を指していることを検証する。
+     *
      * 設定値とSeeder投入済みデータの整合性チェックのため、実行（Act）にあたる操作を持たない。
      */
     public function test_initial_slots_are_eight_distinct_standard_care_actions(): void

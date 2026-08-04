@@ -17,6 +17,9 @@ class CareLogOccurredAtPrecisionTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    /**
+     * ミリ秒付きの値で書き込んでも、DBには秒までが保存されることを検証する。
+     */
     public function test_sub_second_component_is_truncated_on_write(): void
     {
         // Act: サブ秒（.900）付きの値で書き込む

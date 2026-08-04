@@ -13,6 +13,9 @@ class TitleUniqueConstraintTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    /**
+     * 同一系統（育児行動＋条件種別）に、同じしきい値の称号を2件登録できないことを検証する。
+     */
     public function test_duplicate_threshold_within_the_same_series_is_rejected(): void
     {
         // Arrange
@@ -36,6 +39,8 @@ class TitleUniqueConstraintTest extends TestCase
     }
 
     /**
+     * 条件種別が違えば、しきい値が同じ称号でも共存できることを検証する。
+     *
      * 系統は`care_action_id`と`condition_type`の組で決まるため、条件種別が違えば
      * しきい値が同じでも別系統として共存できる（docs/data-model.md ⑥）。
      */

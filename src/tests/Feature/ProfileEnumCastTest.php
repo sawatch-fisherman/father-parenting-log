@@ -12,6 +12,9 @@ class ProfileEnumCastTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    /**
+     * `profiles`の年代2列が、Enumのままモデルに戻ってくる（キャストが往復する）ことを検証する。
+     */
     public function test_age_group_and_child_age_group_round_trip_as_enums(): void
     {
         // Arrange

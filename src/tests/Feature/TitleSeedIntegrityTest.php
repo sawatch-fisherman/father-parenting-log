@@ -27,6 +27,9 @@ class TitleSeedIntegrityTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    /**
+     * 標準17個の育児行動それぞれに、銅・銀・金のCount称号が1件ずつ揃っていることを検証する。
+     */
     public function test_every_standard_care_action_has_bronze_silver_and_gold_count_titles(): void
     {
         // Arrange
@@ -133,6 +136,8 @@ class TitleSeedIntegrityTest extends TestCase
     }
 
     /**
+     * 系統ごとに、等級が上がるほどしきい値も大きくなっていることを検証する。
+     *
      * 等級は`condition_value`から自動導出しない独立した列なので、両者が逆転していても
      * DBは受け付けてしまう（docs/data-model.md ⑥）。系統ごとに 銅 < 銀 < 金 の順で
      * しきい値が上がることをここで担保する（しきい値そのものの重複は

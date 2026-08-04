@@ -22,6 +22,9 @@ class InertiaSharedPropsTest extends TestCase
         $this->withoutVite();
     }
 
+    /**
+     * 全ページ共通のInertia propsとして、現在のロケールと翻訳メッセージが渡ることを検証する。
+     */
     public function test_shares_current_locale_and_messages(): void
     {
         // Act & Assert
@@ -31,6 +34,11 @@ class InertiaSharedPropsTest extends TestCase
         );
     }
 
+    /**
+     * 翻訳ファイルが未投入のロケールを選んでも、メッセージが日本語にフォールバックすることを検証する。
+     *
+     * `locale` prop 自体は選択したロケールのまま渡り、メッセージだけが補われる。
+     */
     public function test_untranslated_locale_falls_back_to_japanese_messages(): void
     {
         // Arrange & Act & Assert: Cookieの付与からpropsの検証までが1つの連鎖になっている
