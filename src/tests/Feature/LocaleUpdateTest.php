@@ -20,6 +20,8 @@ class LocaleUpdateTest extends TestCase
 
     /**
      * ロケール変更でCookieが発行され、そのCookieが後続リクエストの表示言語を実際に切り替えることを検証する。
+     *
+     * `/` は M1 以降 `auth` ミドルウェア配下（`home`）のため、未認証でも確認できる `/login` で検証する。
      */
     public function test_updating_locale_sets_cookie_and_switches_subsequent_requests(): void
     {
@@ -31,7 +33,7 @@ class LocaleUpdateTest extends TestCase
         $response->assertCookie('locale', 'en');
 
         // Act: 発行されたCookieを次のリクエストに乗せる
-        $this->withCookie('locale', 'en')->get('/');
+        $this->withCookie('locale', 'en')->get('/login');
 
         // Assert
         $this->assertSame('en', App::getLocale());
@@ -56,7 +58,7 @@ class LocaleUpdateTest extends TestCase
     public function test_defaults_to_japanese_without_a_locale_cookie(): void
     {
         // Act
-        $this->get('/');
+        $this->get('/login');
 
         // Assert
         $this->assertSame('ja', App::getLocale());
@@ -71,7 +73,7 @@ class LocaleUpdateTest extends TestCase
     public function test_ignores_an_unsupported_locale_cookie(): void
     {
         // Arrange & Act: 未対応ロケールのCookieを載せてリクエストする
-        $this->withCookie('locale', 'fr')->get('/');
+        $this->withCookie('locale', 'fr')->get('/login');
 
         // Assert
         $this->assertSame(Config::string('app.locale'), App::getLocale());

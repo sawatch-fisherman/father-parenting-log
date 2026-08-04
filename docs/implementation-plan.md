@@ -90,16 +90,16 @@ flowchart TD
 - **依存**：M0
 - **対応画面/機能**：S1（ログイン画面）／[features.md](features.md)「ユーザー登録・ログイン」／[screens.md](screens.md) ルーティング `login`・`auth.google.*`・`logout`
 - **タスク**：
-  - [ ] `composer require laravel/socialite`、Google プロバイダ設定（`config/services.php`・`.env`）
-  - [ ] ルート：`GET /login`・`GET /auth/google/redirect`・`GET /auth/google/callback`・`POST /logout`
-  - [ ] `Auth\AuthenticatedSessionController`（`create` / `destroy`）、`Auth\GoogleSocialiteController`（`redirect` / `callback`）
-  - [ ] callback：`provider` + `provider_id` で find/create（`UNIQUE(provider, provider_id)`）。**プロフィール未登録 → `profile.register`（S2）／登録済 → `home`（S3）へリダイレクト**
-  - [ ] ミドルウェア：`guest`（S1）・`auth`（以降）
-  - [ ] Vue：`Pages/Auth/Login.vue`（Google SSO ボタンのみ。[wireframes.md](wireframes.md) S1）
-  - [ ] **`JA|EN` 言語トグル**コンポーネント（M0 の `POST /locale` を叩く。**配置は S1 ログイン画面のみ**。S7 設定画面にも置く＝M8 で対応。全画面ヘッダーには常設しない。[decisions.md](decisions.md) §1.3、[screens.md](screens.md)）
+  - [x] `composer require laravel/socialite`、Google プロバイダ設定（`config/services.php`・`.env`）
+  - [x] ルート：`GET /login`・`GET /auth/google/redirect`・`GET /auth/google/callback`・`POST /logout`
+  - [x] `Auth\AuthenticatedSessionController`（`create` / `destroy`）、`Auth\GoogleSocialiteController`（`redirect` / `callback`）
+  - [x] callback：`provider` + `provider_id` で find/create（`UNIQUE(provider, provider_id)`）。**プロフィール未登録 → `profile.register`（S2）／登録済 → `home`（S3）へリダイレクト**
+  - [x] ミドルウェア：`guest`（S1）・`auth`（以降）
+  - [x] Vue：`Pages/Auth/Login.vue`（Google SSO ボタンのみ。[wireframes.md](wireframes.md) S1）
+  - [x] **`JA|EN` 言語トグル**コンポーネント（M0 の `POST /locale` を叩く。**配置は S1 ログイン画面のみ**。S7 設定画面にも置く＝M8 で対応。全画面ヘッダーには常設しない。[decisions.md](decisions.md) §1.3、[screens.md](screens.md)）
 - **テスト観点**：新規ユーザー作成、既存ユーザーの `home` 遷移、未登録ユーザーの `profile.register` 遷移、未認証アクセスの `login` リダイレクト。
 - **完了条件**：DoD ＋ ログイン→（登録状況に応じた）遷移が動く。
-- **備考**：MVP はセッション認証（[decisions.md](decisions.md) §3.1）。
+- **備考**：MVP はセッション認証（[decisions.md](decisions.md) §3.1）。`home`（`/`）・`profile.register`（`/profile/register`）は M2・M3 実装までの暫定プレースホルダ（`web.php` のクロージャ＋`Pages/Record/Index.vue`・`Pages/Profile/Register.vue`）。
 
 ---
 
