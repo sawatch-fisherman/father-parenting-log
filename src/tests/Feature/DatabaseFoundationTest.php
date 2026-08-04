@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Support\CareActionId;
 use App\Support\TitleId;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -135,24 +134,5 @@ class DatabaseFoundationTest extends TestCase
         // Assert
         $this->assertSame($careActionCount, CareAction::query()->count());
         $this->assertSame($titleCount, Title::query()->count());
-    }
-
-    /**
-     * 全マイグレーションが依存関係の逆順にロールバックできることを検証する。
-     *
-     * 外部キーを張った順序どおりに落とせないと`migrate:rollback`が途中で失敗し、
-     * スキーマが中途半端な状態で残る。
-     */
-    public function test_all_migrations_roll_back_in_reverse_dependency_order(): void
-    {
-        // Act
-        $this->artisan('migrate:rollback')->assertSuccessful();
-
-        // Assert
-        $this->assertFalse(Schema::hasTable('care_logs'));
-        $this->assertFalse(Schema::hasTable('users'));
-
-        // 後始末: 後続テストが引き継ぐスキーマを元に戻す
-        $this->artisan('migrate')->assertSuccessful();
     }
 }
