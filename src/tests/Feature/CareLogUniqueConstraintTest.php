@@ -21,6 +21,7 @@ class CareLogUniqueConstraintTest extends TestCase
      */
     public function test_duplicate_user_action_and_occurred_at_is_rejected(): void
     {
+        // Arrange
         $user = User::factory()->create();
         $careAction = CareAction::factory()->create();
         $occurredAt = now();
@@ -31,8 +32,10 @@ class CareLogUniqueConstraintTest extends TestCase
             'occurred_at' => $occurredAt,
         ]);
 
+        // Assert: 例外の期待はPHPUnitの仕様上Actより前に宣言する
         $this->expectException(QueryException::class);
 
+        // Act: 同一ユーザー・同一育児行動・同一秒で二重送信する
         CareLog::factory()->create([
             'user_id' => $user->id,
             'care_action_id' => $careAction->id,

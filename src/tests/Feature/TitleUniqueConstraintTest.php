@@ -15,6 +15,7 @@ class TitleUniqueConstraintTest extends TestCase
 
     public function test_duplicate_threshold_within_the_same_series_is_rejected(): void
     {
+        // Arrange
         $careAction = CareAction::factory()->create();
 
         Title::factory()->create([
@@ -23,8 +24,10 @@ class TitleUniqueConstraintTest extends TestCase
             'condition_value' => 10,
         ]);
 
+        // Assert: 例外の期待はPHPUnitの仕様上Actより前に宣言する
         $this->expectException(QueryException::class);
 
+        // Act: 同一系統に同じしきい値をもう1件入れる
         Title::factory()->create([
             'care_action_id' => $careAction->id,
             'condition_type' => TitleConditionType::Count,
@@ -38,6 +41,7 @@ class TitleUniqueConstraintTest extends TestCase
      */
     public function test_same_threshold_is_allowed_for_a_different_condition_type(): void
     {
+        // Arrange
         $careAction = CareAction::factory()->create();
 
         Title::factory()->create([
@@ -46,12 +50,14 @@ class TitleUniqueConstraintTest extends TestCase
             'condition_value' => 10,
         ]);
 
+        // Act: しきい値は同じまま、条件種別だけを変えて入れる
         Title::factory()->create([
             'care_action_id' => $careAction->id,
             'condition_type' => TitleConditionType::Streak,
             'condition_value' => 10,
         ]);
 
+        // Assert
         $this->assertSame(2, Title::query()->where('care_action_id', $careAction->id)->count());
     }
 
@@ -59,9 +65,12 @@ class TitleUniqueConstraintTest extends TestCase
      * 全体合計称号（`care_action_id IS NULL`）はMySQLがUNIQUE内のNULL同士を別物として扱うため
      * DBのUNIQUE制約では重複を弾けない。Seeder固定マスタ側で重複が起きていないことをここで担保する
      * （docs/data-model.md ⑥）。
+     *
+     * Seeder投入済みの状態そのものが検証対象のため、実行（Act）にあたる操作を持たない。
      */
     public function test_seeded_titles_have_no_duplicate_series_thresholds(): void
     {
+        // Arrange
         $this->seed();
 
         $series = Title::query()
@@ -73,6 +82,7 @@ class TitleUniqueConstraintTest extends TestCase
                 $title->condition_value,
             ));
 
+        // Assert
         $this->assertSame($series->count(), $series->unique()->count());
     }
 }

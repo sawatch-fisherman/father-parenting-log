@@ -19,10 +19,12 @@ class CareLogOccurredAtPrecisionTest extends TestCase
 
     public function test_sub_second_component_is_truncated_on_write(): void
     {
+        // Act: サブ秒（.900）付きの値で書き込む
         $careLog = CareLog::factory()->create([
             'occurred_at' => '2026-07-29 12:34:56.900',
         ]);
 
+        // Assert: Eloquentのキャストを介さない生の値で確認する
         $this->assertSame(
             '2026-07-29 12:34:56',
             DB::table('care_logs')->where('id', $careLog->id)->value('occurred_at'),

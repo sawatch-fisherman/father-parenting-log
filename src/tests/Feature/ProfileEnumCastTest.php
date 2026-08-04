@@ -14,13 +14,16 @@ class ProfileEnumCastTest extends TestCase
 
     public function test_age_group_and_child_age_group_round_trip_as_enums(): void
     {
+        // Arrange
         $profile = Profile::factory()->create([
             'age_group' => AgeGroup::Thirties,
             'child_age_group' => ChildAgeGroup::One,
         ]);
 
+        // Act: DBから読み直してキャストの往復を成立させる
         $fresh = $profile->fresh();
 
+        // Assert
         $this->assertSame(AgeGroup::Thirties, $fresh->age_group);
         $this->assertSame(ChildAgeGroup::One, $fresh->child_age_group);
     }

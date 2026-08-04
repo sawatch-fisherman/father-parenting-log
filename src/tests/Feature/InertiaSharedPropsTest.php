@@ -24,6 +24,7 @@ class InertiaSharedPropsTest extends TestCase
 
     public function test_shares_current_locale_and_messages(): void
     {
+        // Act & Assert
         $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('locale', 'ja')
             ->where('messages.nav.record', '記録'),
@@ -32,6 +33,7 @@ class InertiaSharedPropsTest extends TestCase
 
     public function test_untranslated_locale_falls_back_to_japanese_messages(): void
     {
+        // Arrange & Act & Assert: Cookieの付与からpropsの検証までが1つの連鎖になっている
         $this->withCookie('locale', 'en')
             ->get('/')
             ->assertInertia(fn (AssertableInertia $page) => $page

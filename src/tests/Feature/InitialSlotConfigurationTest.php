@@ -19,12 +19,17 @@ class InitialSlotConfigurationTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    /**
+     * 設定値とSeeder投入済みデータの整合性チェックのため、実行（Act）にあたる操作を持たない。
+     */
     public function test_initial_slots_are_eight_distinct_standard_care_actions(): void
     {
+        // Arrange
         $this->seed();
 
         $careActionIds = Config::array('totoops.initial_slot_care_action_ids');
 
+        // Assert
         $this->assertCount(8, $careActionIds);
         $this->assertCount(8, array_unique($careActionIds), '初期おすすめ8個に重複がある');
 

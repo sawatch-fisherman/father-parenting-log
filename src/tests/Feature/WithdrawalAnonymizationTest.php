@@ -15,6 +15,9 @@ use Tests\TestCase;
  * 退会は行を削除せず、users・profiles の値だけを書き換える in-place 匿名化で行う
  * （docs/decisions.md §1.1「退会処理の方式」）。退会UI自体はPhase 2以降だが、
  * その方式がスキーマ上成立することをM0の時点で担保する。
+ *
+ * 退会処理のサービス層はまだ存在しないため、各テストのActでは退会後の状態を
+ * `forceFill()` で直接再現している。
  */
 class WithdrawalAnonymizationTest extends TestCase
 {
@@ -27,8 +30,10 @@ class WithdrawalAnonymizationTest extends TestCase
      */
     public function test_multiple_withdrawn_users_can_share_a_null_provider_id(): void
     {
+        // Arrange
         $users = User::factory()->count(2)->create(['provider' => 'google']);
 
+        // Act: 2人とも退会させる
         foreach ($users as $user) {
             $user->forceFill([
                 'provider' => 'withdrawn',
@@ -38,6 +43,7 @@ class WithdrawalAnonymizationTest extends TestCase
             ])->save();
         }
 
+        // Assert
         $this->assertSame(2, User::whereNotNull('withdrawn_at')->count());
     }
 
@@ -47,10 +53,12 @@ class WithdrawalAnonymizationTest extends TestCase
      */
     public function test_withdrawal_keeps_every_care_log(): void
     {
+        // Arrange
         $user = User::factory()->create();
         Profile::factory()->create(['user_id' => $user->id]);
         CareLog::factory()->count(3)->create(['user_id' => $user->id]);
 
+        // Act
         $user->forceFill([
             'provider' => 'withdrawn',
             'provider_id' => null,
@@ -63,6 +71,7 @@ class WithdrawalAnonymizationTest extends TestCase
             'child_age_group' => ChildAgeGroup::Unanswered,
         ])->save();
 
+        // Assert
         $this->assertSame(3, CareLog::where('user_id', $user->id)->count());
         $this->assertDatabaseHas('profiles', [
             'user_id' => $user->id,
@@ -77,6 +86,7 @@ class WithdrawalAnonymizationTest extends TestCase
      */
     public function test_withdrawal_does_not_touch_the_care_log_snapshot(): void
     {
+        // Arrange
         $user = User::factory()->create();
         Profile::factory()->create([
             'user_id' => $user->id,
@@ -90,12 +100,14 @@ class WithdrawalAnonymizationTest extends TestCase
             'child_age_group' => ChildAgeGroup::Zero,
         ]);
 
+        // Act: プロフィール側の年代だけを潰す
         $user->profile->forceFill([
             'nickname' => '退会したユーザー',
             'age_group' => AgeGroup::Unanswered,
             'child_age_group' => ChildAgeGroup::Unanswered,
         ])->save();
 
+        // Assert
         $careLog->refresh();
 
         $this->assertSame(AgeGroup::Thirties, $careLog->age_group);

@@ -18,6 +18,9 @@ use Tests\TestCase;
  * 称号は育児行動ごとに銅・銀・金の3段階を必ず揃える設計なので、育児行動を追加したのに
  * 称号を足し忘れる／等級としきい値の対応が逆転する、といった崩れをここで検知する。
  *
+ * 本クラスはいずれも「Seeder投入済みの状態」そのものが検証対象で、状態を変える操作を行わない。
+ * そのため実行（Act）にあたるブロックを持たず、`$this->seed()` と検証用の読み出しがArrangeにあたる。
+ *
  * @see docs/decisions.md §1.3「称号の提示順・等級・一覧表示」
  */
 class TitleSeedIntegrityTest extends TestCase
@@ -26,10 +29,12 @@ class TitleSeedIntegrityTest extends TestCase
 
     public function test_every_standard_care_action_has_bronze_silver_and_gold_count_titles(): void
     {
+        // Arrange
         $this->seed();
 
         $careActions = CareAction::query()->whereNull('user_id')->get();
 
+        // Assert
         $this->assertCount(17, $careActions);
 
         foreach ($careActions as $careAction) {
@@ -52,8 +57,10 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_overall_count_titles_cover_every_grade(): void
     {
+        // Arrange
         $this->seed();
 
+        // Assert
         foreach (TitleGrade::cases() as $grade) {
             $this->assertSame(1, Title::query()
                 ->whereNull('care_action_id')
@@ -72,11 +79,13 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_overall_titles_are_presented_before_care_action_titles(): void
     {
+        // Arrange
         $this->seed();
 
         $lastOverall = Title::query()->whereNull('care_action_id')->max('sort_order');
         $firstByCareAction = Title::query()->whereNotNull('care_action_id')->min('sort_order');
 
+        // Assert
         $this->assertLessThan($firstByCareAction, $lastOverall, '全体称号が育児行動別の称号より後に提示されている');
     }
 
@@ -91,6 +100,7 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_care_action_titles_are_presented_in_care_action_display_order(): void
     {
+        // Arrange
         $this->seed();
 
         $displayOrder = CareAction::query()->whereNull('user_id')->pluck('sort_order', 'id');
@@ -102,6 +112,7 @@ class TitleSeedIntegrityTest extends TestCase
             ->get()
             ->groupBy(fn (Title $title): int => $title->condition_type->value);
 
+        // Assert
         foreach ($seriesByConditionType as $conditionType => $titles) {
             $presented = $titles
                 ->pluck('care_action_id')
@@ -129,6 +140,7 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_thresholds_increase_with_grade_within_each_series(): void
     {
+        // Arrange
         $this->seed();
 
         /** @var Collection<string, Collection<int, Title>> $series */
@@ -138,6 +150,7 @@ class TitleSeedIntegrityTest extends TestCase
             $title->condition_type->value,
         ));
 
+        // Assert
         foreach ($series as $key => $titles) {
             $thresholds = $titles
                 ->sortBy(fn (Title $title): int => $title->grade->value)
@@ -158,6 +171,7 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_every_title_id_constant_is_seeded_exactly_once(): void
     {
+        // Arrange
         $this->seed();
 
         $ids = array_values(array_map(
@@ -165,6 +179,7 @@ class TitleSeedIntegrityTest extends TestCase
             (new ReflectionClass(TitleId::class))->getConstants(),
         ));
 
+        // Assert
         $this->assertSame(count($ids), count(array_unique($ids)), 'TitleId の定数値に重複がある');
         $this->assertSame(count($ids), Title::query()->count(), 'TitleId の定数と titles の行数が一致していない');
         $this->assertSame(count($ids), Title::query()->whereIn('id', $ids)->count(), 'TitleId の定数に対応しない称号行がある');
@@ -178,6 +193,7 @@ class TitleSeedIntegrityTest extends TestCase
      */
     public function test_count_title_names_end_with_the_suffix_of_their_grade(): void
     {
+        // Arrange
         $this->seed();
 
         $suffixes = [
@@ -188,6 +204,7 @@ class TitleSeedIntegrityTest extends TestCase
 
         $titles = Title::query()->where('condition_type', TitleConditionType::Count)->get();
 
+        // Assert
         $this->assertNotEmpty($titles);
 
         foreach ($titles as $title) {

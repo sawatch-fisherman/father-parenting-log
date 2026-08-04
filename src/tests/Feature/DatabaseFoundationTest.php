@@ -23,9 +23,12 @@ class DatabaseFoundationTest extends TestCase
      *
      * カテゴリ順に並べ替えた結果`id`の昇順とは一致しなくなるが、採番自体は詰まっている必要がある
      * （ユーザーカスタム行は`18`から続けて採番するため。docs/data-model.md ③）。
+     *
+     * Seeder投入済みの状態そのものが検証対象のため、実行（Act）にあたる操作を持たない。
      */
     public function test_standard_care_actions_are_numbered_as_a_gapless_sort_order(): void
     {
+        // Arrange
         $this->seed();
 
         $sortOrders = CareAction::query()
@@ -34,13 +37,16 @@ class DatabaseFoundationTest extends TestCase
             ->pluck('sort_order')
             ->all();
 
+        // Assert
         $this->assertSame(range(1, 17), $sortOrders);
     }
 
     public function test_standard_master_rows_keep_their_fixed_ids(): void
     {
+        // Arrange
         $this->seed();
 
+        // Assert: 固定IDで引けること自体（findOrFail）も検証の一部
         $diaperChange = CareAction::query()->findOrFail(CareActionId::DIAPER_CHANGE);
 
         $this->assertSame('おむつ交換', $diaperChange->name);
@@ -52,8 +58,10 @@ class DatabaseFoundationTest extends TestCase
 
     public function test_standard_care_actions_stay_inside_the_reserved_id_range(): void
     {
+        // Arrange
         $this->seed();
 
+        // Assert
         $this->assertSame(0, CareAction::query()
             ->whereNull('user_id')
             ->where('id', '>=', CareActionId::CUSTOM_ID_FLOOR)
@@ -68,10 +76,13 @@ class DatabaseFoundationTest extends TestCase
      */
     public function test_custom_care_actions_are_numbered_above_the_reserved_id_range(): void
     {
+        // Arrange
         $this->seed();
 
+        // Act
         $customCareAction = CareAction::factory()->create(['user_id' => User::factory()]);
 
+        // Assert
         $this->assertGreaterThanOrEqual(CareActionId::CUSTOM_ID_FLOOR, $customCareAction->id);
     }
 
@@ -82,8 +93,10 @@ class DatabaseFoundationTest extends TestCase
      */
     public function test_only_exposed_ids_use_ulids(): void
     {
+        // Act
         $careLog = CareLog::factory()->create();
 
+        // Assert
         $this->assertTrue(Str::isUlid($careLog->id));
         $this->assertTrue(Str::isUlid($careLog->user_id));
 
@@ -93,24 +106,30 @@ class DatabaseFoundationTest extends TestCase
 
     public function test_seeding_twice_does_not_duplicate_master_rows(): void
     {
+        // Arrange
         $this->seed();
 
         $careActionCount = CareAction::query()->count();
         $titleCount = Title::query()->count();
 
+        // Act
         $this->seed();
 
+        // Assert
         $this->assertSame($careActionCount, CareAction::query()->count());
         $this->assertSame($titleCount, Title::query()->count());
     }
 
     public function test_all_migrations_roll_back_in_reverse_dependency_order(): void
     {
+        // Act
         $this->artisan('migrate:rollback')->assertSuccessful();
 
+        // Assert
         $this->assertFalse(Schema::hasTable('care_logs'));
         $this->assertFalse(Schema::hasTable('users'));
 
+        // 後始末: 後続テストが引き継ぐスキーマを元に戻す
         $this->artisan('migrate')->assertSuccessful();
     }
 }
