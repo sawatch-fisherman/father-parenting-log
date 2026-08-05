@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use RuntimeException;
@@ -42,6 +43,36 @@ class GoogleAuthenticationTest extends TestCase
     }
 
     /**
+     * 認可画面へ渡す要求スコープが `openid` だけであることを検証する。
+     *
+     * Socialite の Google ドライバの既定は `openid profile email` で、そのままだと氏名・
+     * メールアドレスの提供を同意画面で求めてしまう。本サービスが保存するのは識別子だけなので、
+     * 「使わない個人情報は最初から持たない」方針（docs/privacy.md）と食い違う。
+     * `Socialite::fake()` は固定URLを返して実際のスコープを隠すため、ここでは fake せず
+     * 実際に組み立てられる認可URLを検証する。
+     */
+    public function test_redirect_requests_only_the_openid_scope(): void
+    {
+        // Arrange
+        config()->set('services.google', [
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'redirect' => 'http://localhost/auth/google/callback',
+        ]);
+
+        // Act
+        $response = $this->get('/auth/google/redirect');
+
+        // Assert
+        $response->assertRedirectContains('accounts.google.com');
+
+        parse_str((string) parse_url((string) $response->headers->get('Location'), PHP_URL_QUERY), $query);
+
+        $this->assertArrayHasKey('scope', $query);
+        $this->assertSame('openid', $query['scope']);
+    }
+
+    /**
      * 初回ログインで `provider`/`provider_id` を持つ新規ユーザーが作成され、ログイン状態になることを検証する。
      */
     public function test_creates_a_new_user_on_first_login(): void
@@ -76,6 +107,41 @@ class GoogleAuthenticationTest extends TestCase
         // Assert
         $this->assertAuthenticatedAs($user);
         $this->assertSame(1, User::query()->count());
+    }
+
+    /**
+     * 退会済みユーザーが同じGoogleアカウントで再ログインしても、退会前のアカウントには戻らず
+     * 別の新規ユーザーとして作成されることを検証する。
+     *
+     * 退会は行削除ではなく `provider = 'withdrawn'`／`provider_id = null` への書き換えで行うため
+     * （docs/decisions.md §1.1）、コールバックの検索条件が退会済み行に一致しないことが
+     * 「退会後は過去のデータに戻れない」という保証の前提になっている。
+     */
+    public function test_a_withdrawn_user_cannot_return_to_their_previous_account(): void
+    {
+        // Arrange
+        $withdrawnUser = User::factory()->create(['provider' => 'google', 'provider_id' => 'google-user-5']);
+        Profile::factory()->create(['user_id' => $withdrawnUser->id]);
+
+        $withdrawnUser->forceFill([
+            'provider' => 'withdrawn',
+            'provider_id' => null,
+            'remember_token' => null,
+            'withdrawn_at' => now(),
+        ])->save();
+
+        Socialite::fake('google', SocialiteUser::fake(['id' => 'google-user-5']));
+
+        // Act
+        $response = $this->get('/auth/google/callback');
+
+        // Assert
+        $this->assertAuthenticated();
+        $this->assertNotSame($withdrawnUser->id, Auth::id());
+        $this->assertSame(2, User::query()->count());
+
+        // Assert: 退会前のプロフィールを引き継がないため、プロフィール登録からやり直しになる
+        $response->assertRedirect(route('profile.register'));
     }
 
     /**
@@ -130,6 +196,28 @@ class GoogleAuthenticationTest extends TestCase
         $response->assertRedirect(route('login'));
         $this->assertGuest();
         $response->assertSessionHas('error');
+    }
+
+    /**
+     * `provider_id` が空のコールバックでログインもユーザー作成もしないことを検証する。
+     *
+     * `provider_id` は退会者のために NULL 許容にしてあるため、null を検索条件に渡すと
+     * Eloquent が `whereNull` に落とし、`provider_id IS NULL` の既存行に一致して
+     * 別人としてログインさせてしまう。Googleは必ず `sub` を返すが多層防御として弾く。
+     */
+    public function test_rejects_a_callback_without_a_provider_id(): void
+    {
+        // Arrange
+        Socialite::fake('google', SocialiteUser::fake(['id' => null]));
+
+        // Act
+        $response = $this->get('/auth/google/callback');
+
+        // Assert
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('error');
+        $this->assertGuest();
+        $this->assertSame(0, User::query()->count());
     }
 
     /**
