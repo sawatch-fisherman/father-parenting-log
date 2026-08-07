@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
-use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class GoogleSocialiteController extends Controller
@@ -28,7 +27,7 @@ class GoogleSocialiteController extends Controller
      * `setScopes()` は `Socialite::driver()` の戻り値型である `Provider` 契約ではなく
      * `AbstractProvider` 側に生えているため、型を明示してから呼ぶ。
      */
-    public function redirect(): Response
+    public function redirect(): RedirectResponse
     {
         /** @var AbstractProvider $driver */
         $driver = Socialite::driver(self::PROVIDER);
@@ -59,9 +58,11 @@ class GoogleSocialiteController extends Controller
             return $this->redirectToLoginWithError();
         }
 
-        // `provider_id` は退会者向けに NULL 許容のため、null のまま検索すると `whereNull` に
-        // 落ちて既存の退会済み行に一致してしまう。Google は必ず `sub` を返すが、
-        // 取り違えたままログインさせないよう多層防御として弾く。
+        // `provider_id` は退会者向けに NULL 許容のため、null のままでも検索・作成が通ってしまう。
+        // 一度 `provider = 'google'` かつ `provider_id IS NULL` の行ができると、次に同じく空の
+        // コールバックが来たときに `whereNull` でその行に一致し、別人としてログインさせてしまう
+        // （退会済み行は `provider = 'withdrawn'` なので一致しない。docs/decisions.md §1.1）。
+        // Google は必ず `sub` を返すが、多層防御として弾く。
         $providerId = $socialiteUser->getId();
 
         if (blank($providerId)) {
