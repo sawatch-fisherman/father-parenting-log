@@ -6,6 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use RuntimeException;
@@ -199,11 +200,48 @@ class GoogleAuthenticationTest extends TestCase
     }
 
     /**
+     * Google 認可の失敗後、`login` へのリダイレクト先で `flash.error` がInertia propsに届くことを検証する。
+     *
+     * `assertSessionHas('error')` はセッションにキーが積まれたことしか保証せず、
+     * `HandleInertiaRequests::share()` のキー名変更やLogin.vue側の参照漏れを検知できない。
+     * セッション→共有props→画面表示の経路をここで固定する。
+     */
+    public function test_login_failure_error_reaches_inertia_props(): void
+    {
+        // Arrange
+        Socialite::fake('google', function () {
+            throw new RuntimeException('denied');
+        });
+
+        // Act
+        $this->get('/auth/google/callback');
+
+        // Assert
+        $this->get(route('login'))->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('flash.error', __('auth.google_login_failed')),
+        );
+    }
+
+    /**
+     * 認証失敗を経ていない通常のログイン画面表示では `flash.error` が `null` であることを検証する。
+     *
+     * `flash.error` の型が `string | null` であることをLogin.vue側と一致させておくための対称テスト。
+     */
+    public function test_login_page_has_no_flash_error_by_default(): void
+    {
+        // Act & Assert
+        $this->get(route('login'))->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('flash.error', null),
+        );
+    }
+
+    /**
      * `provider_id` が空のコールバックでログインもユーザー作成もしないことを検証する。
      *
-     * `provider_id` は退会者のために NULL 許容にしてあるため、null を検索条件に渡すと
-     * Eloquent が `whereNull` に落とし、`provider_id IS NULL` の既存行に一致して
-     * 別人としてログインさせてしまう。Googleは必ず `sub` を返すが多層防御として弾く。
+     * `provider_id` は退会者のために NULL 許容にしてあるため、null のままでもユーザーを
+     * 作成できてしまう。一度 `provider = 'google'` かつ `provider_id IS NULL` の行ができると、
+     * 次に同じく空のコールバックが来たとき `whereNull` でその行に一致し、別人としてログイン
+     * させてしまう。Googleは必ず `sub` を返すが多層防御として弾く。
      */
     public function test_rejects_a_callback_without_a_provider_id(): void
     {
