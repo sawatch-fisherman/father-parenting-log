@@ -24,11 +24,13 @@ class InertiaSharedPropsTest extends TestCase
 
     /**
      * 全ページ共通のInertia propsとして、現在のロケールと翻訳メッセージが渡ることを検証する。
+     *
+     * `/` は M1 以降 `auth` ミドルウェア配下（`home`）のため、未認証でも確認できる `/login` で検証する。
      */
     public function test_shares_current_locale_and_messages(): void
     {
         // Act & Assert
-        $this->get('/')->assertInertia(fn (AssertableInertia $page) => $page
+        $this->get('/login')->assertInertia(fn (AssertableInertia $page) => $page
             ->where('locale', 'ja')
             ->where('messages.nav.record', '記録'),
         );
@@ -43,7 +45,7 @@ class InertiaSharedPropsTest extends TestCase
     {
         // Arrange & Act & Assert: Cookieの付与からpropsの検証までが1つの連鎖になっている
         $this->withCookie('locale', 'en')
-            ->get('/')
+            ->get('/login')
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('locale', 'en')
                 // `lang/en/` 未投入の間は日本語で補う（`nav.record` のような生キーを画面に出さない）。
