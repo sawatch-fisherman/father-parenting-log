@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * `casts()`（メソッド形式）で定義したEnumキャストはlarastanが型推論できないため、
+ * `@property` で明示する（`app/`配下のみphpstan level 8の対象）。
+ *
+ * @property AgeGroup $age_group
+ * @property ChildAgeGroup $child_age_group
+ */
 #[Fillable(['user_id', 'nickname', 'age_group', 'child_age_group'])]
 class Profile extends Model
 {
