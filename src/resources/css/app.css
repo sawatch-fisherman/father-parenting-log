@@ -14,9 +14,9 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     /* 5.2 カラーパレット */
-    --color-primary: #3f7a52;
-    --color-primary-hover: #2e5d3e;
-    --color-primary-subtle: #e5f1e7;
+    --color-primary: #3b8244;
+    --color-primary-hover: #2c6334;
+    --color-primary-subtle: #e7f3e9;
     --color-secondary: #5b5650;
     --color-accent: #d97757;
     --color-background: #fbf9f6;
