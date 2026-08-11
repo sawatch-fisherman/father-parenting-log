@@ -3,7 +3,43 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * DESIGN.md のトークンをTailwind v4のCSSファーストconfigとして定義する。
+ * DESIGN.mdはダークモードを定義していない（背景色はBackground #FBF9F6の単一トーンのみ）ため、
+ * ここでは dark: バリアント用のトークンは用意しない（既存画面のdark:クラスは撤去する）。
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* 6.1 フォントファミリー */
+    --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* 5.2 カラーパレット */
+    --color-primary: #3f7a52;
+    --color-primary-hover: #2e5d3e;
+    --color-primary-subtle: #e5f1e7;
+    --color-secondary: #5b5650;
+    --color-accent: #d97757;
+    --color-background: #fbf9f6;
+    --color-surface: #ffffff;
+    --color-text-primary: #33302c;
+    --color-text-secondary: #6e6a64;
+    --color-border: #dedad3;
+    --color-success: #2f6690;
+    --color-warning: #b4791e;
+    --color-error: #b3435a;
+    --color-info: #5d82a0;
+
+    /* 6.2 サイズ・行間・ウェイトの階層（Weightはクラス側でfont-semibold/font-boldを併用する） */
+    --text-display: 28px;
+    --text-display--line-height: 1.4;
+    --text-heading-l: 22px;
+    --text-heading-l--line-height: 1.4;
+    --text-heading-m: 18px;
+    --text-heading-m--line-height: 1.5;
+    --text-body: 16px;
+    --text-body--line-height: 1.7;
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 1.6;
+    --text-label: 15px;
+    --text-label--line-height: 1.4;
 }

@@ -22,21 +22,21 @@ function setLocale(locale: string): void {
 </script>
 
 <template>
-    <div class="flex items-center gap-1 text-sm">
+    <div class="flex items-center gap-1 text-body-sm">
         <!-- :class は動的クラス切り替え、@click はクリックイベントのハンドラ登録 -->
         <button
             type="button"
             class="font-medium"
-            :class="page.props.locale === 'ja' ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+            :class="page.props.locale === 'ja' ? 'text-primary' : 'text-text-secondary hover:text-text-primary'"
             @click="setLocale('ja')"
         >
             JA
         </button>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <span class="text-border">|</span>
         <button
             type="button"
             class="font-medium"
-            :class="page.props.locale === 'en' ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+            :class="page.props.locale === 'en' ? 'text-primary' : 'text-text-secondary hover:text-text-primary'"
             @click="setLocale('en')"
         >
             EN

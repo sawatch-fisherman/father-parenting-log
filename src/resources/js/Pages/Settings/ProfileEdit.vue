@@ -34,20 +34,20 @@ function submit(): void {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
-        <div class="p-4">
+    <div class="flex min-h-screen flex-col bg-background text-text-primary">
+        <div class="px-4 pt-6">
             <!--
               settings.index（S7）はM8で実装予定のため、それまでの暫定リンク先として home へ戻す。
               SPA内遷移のため <Link> を使う（生の <a> だとフルページリロードになる）。
             -->
-            <Link href="/" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <Link href="/" class="text-body-sm text-text-secondary hover:text-text-primary">
                 {{ t('profile.back') }}
             </Link>
         </div>
 
         <div class="flex flex-1 flex-col items-center px-4">
             <form class="w-full max-w-sm space-y-6" @submit.prevent="submit">
-                <h1 class="text-center text-2xl font-semibold">{{ t('profile.edit_title') }}</h1>
+                <h1 class="text-center text-heading-l font-bold">{{ t('profile.edit_title') }}</h1>
 
                 <ProfileFormFields
                     :form="form"
@@ -58,7 +58,7 @@ function submit(): void {
 
                 <button
                     type="submit"
-                    class="w-full rounded-md bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                    class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:pointer-events-none disabled:bg-border disabled:text-text-secondary"
                     :disabled="form.processing"
                 >
                     {{ t('profile.edit_submit') }}
