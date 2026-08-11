@@ -138,11 +138,16 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * `care_action_id`・`age_group`・`child_age_group` を含まない部分更新でも、
-     * 送信していないフィールドがバリデーションエラーにならず更新できることを検証する
-     * （`ProfileRequest` は store/update 共用で両フィールドとも任意のため）。
+     * `age_group`・`child_age_group` を含まない更新リクエストが、バリデーションエラーには
+     * ならず（両フィールドとも任意のため）、かつ既存の値を維持せず `Unanswered` に
+     * リセットされることを検証する。
+     *
+     * `ProfileRequest` はキー自体が無くても未選択と同じ扱いにするため、PATCHは部分更新ではなく
+     * 常に3項目（`nickname`／`age_group`／`child_age_group`）の全置換になる（`ProfileRequest`
+     * クラスdocblock参照）。S8のフォームは常に3項目とも送信するため実害は無いが、その前提を
+     * 崩す変更（部分送信フォームの追加等）を検知できるよう固定しておく。
      */
-    public function test_updating_only_the_nickname_keeps_other_fields_untouched_by_validation(): void
+    public function test_omitting_age_groups_on_update_resets_them_to_unanswered(): void
     {
         // Arrange
         $user = User::factory()->create();
@@ -273,5 +278,139 @@ class ProfileControllerTest extends TestCase
             ->where('profile.age_group', AgeGroup::Forties->value)
             ->where('profile.child_age_group', ChildAgeGroup::Two->value),
         );
+    }
+
+    /**
+     * `nickname` の上限（50文字）ちょうどは通ることを検証する。
+     *
+     * `ProfileRequest` の `max:50` と `profiles.nickname`（`varchar(50)`）の桁数が一致している
+     * ことを固定する。片方だけ変更すると、SQLiteのテスト環境では気付けず本番MySQLで
+     * 切り詰め・エラーになる。
+     */
+    public function test_nickname_at_the_max_length_is_accepted(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        $nickname = str_repeat('あ', 50);
+
+        // Act
+        $response = $this->actingAs($user)->post('/profile', ['nickname' => $nickname]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('profiles', ['user_id' => $user->id, 'nickname' => $nickname]);
+    }
+
+    /**
+     * `nickname` が上限を1文字超えると `max:50` で弾かれることを検証する。
+     */
+    public function test_nickname_over_the_max_length_is_rejected(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+
+        // Act
+        $response = $this->actingAs($user)->post('/profile', ['nickname' => str_repeat('あ', 51)]);
+
+        // Assert
+        $response->assertSessionHasErrors('nickname');
+        $this->assertDatabaseMissing('profiles', ['user_id' => $user->id]);
+    }
+
+    /**
+     * `age_group` に列挙外の値を送るとバリデーションで弾かれることを検証する。
+     *
+     * `Rule::enum(AgeGroup::class)` が機能していることと、`lang/ja/validation.php` に追加した
+     * `enum` メッセージのキーが実際に解決されることを併せて確認する。
+     */
+    public function test_an_out_of_range_age_group_is_rejected(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+
+        // Act
+        $response = $this->actingAs($user)->post('/profile', [
+            'nickname' => 'とと',
+            'age_group' => 99,
+        ]);
+
+        // Assert
+        $response->assertSessionHasErrors('age_group');
+        $this->assertDatabaseMissing('profiles', ['user_id' => $user->id]);
+    }
+
+    /**
+     * 登録済みユーザーが `GET /profile/register` に再訪しても `home` へリダイレクトされ、
+     * 空の登録フォームが再表示されないことを検証する（`RedirectIfProfileIsComplete`）。
+     */
+    public function test_a_user_with_a_profile_is_redirected_away_from_registration_page(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act
+        $response = $this->actingAs($user)->get('/profile/register');
+
+        // Assert
+        $response->assertRedirect(route('home'));
+    }
+
+    /**
+     * 登録済みユーザーが `POST /profile` を再送しても、`profiles.user_id` のUNIQUE制約違反で
+     * 500にならず `home` へリダイレクトされることを検証する（`RedirectIfProfileIsComplete`）。
+     *
+     * 登録完了後にブラウザバックでS2に戻って再送信する、S2を複数タブで開いたまま両方
+     * 送信するといった通常操作で再現しうる経路のため、回帰テストとして固定する。
+     */
+    public function test_resubmitting_registration_does_not_cause_a_unique_constraint_error(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id, 'nickname' => '最初の登録']);
+
+        // Act
+        $response = $this->actingAs($user)->post('/profile', [
+            'nickname' => '再送された登録',
+        ]);
+
+        // Assert
+        $response->assertRedirect(route('home'));
+        $this->assertDatabaseHas('profiles', ['user_id' => $user->id, 'nickname' => '最初の登録']);
+        $this->assertSame(1, Profile::query()->where('user_id', $user->id)->count());
+    }
+
+    /**
+     * 未認証で `POST /profile` へアクセスすると `login` へリダイレクトされることを検証する。
+     *
+     * `GET /` については `GoogleAuthenticationTest` で確認済みの `auth` ミドルウェアの効果を、
+     * プロフィール登録のアクション系ルートでも代表して固定する。
+     */
+    public function test_unauthenticated_access_to_profile_store_redirects_to_login(): void
+    {
+        // Act
+        $response = $this->post('/profile', ['nickname' => 'とと']);
+
+        // Assert
+        $response->assertRedirect(route('login'));
+    }
+
+    /**
+     * プロフィール未登録ユーザーが `PATCH /settings/profile` を直接叩いても
+     * `profile.register` へリダイレクトされることを検証する。
+     *
+     * `EnsureProfileIsComplete` は `GET /settings/profile` だけでなく `PATCH` にも
+     * 効くことを別途固定する（GETのみ検証していると更新アクション側の適用漏れに気付けない）。
+     */
+    public function test_a_user_without_a_profile_is_redirected_away_from_profile_update(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+
+        // Act
+        $response = $this->actingAs($user)->patch('/settings/profile', ['nickname' => 'とと']);
+
+        // Assert
+        $response->assertRedirect(route('profile.register'));
     }
 }

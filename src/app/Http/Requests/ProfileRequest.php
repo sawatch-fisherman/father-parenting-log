@@ -14,6 +14,14 @@ use Illuminate\Validation\Rule;
  * `AgeGroup::Unanswered`／`ChildAgeGroup::Unanswered` に補って返す
  * （カラム自体は NOT NULL のため、DB上のNULLではなく列挙値の「未回答」で表現する）。
  *
+ * **`store`／`update` とも、リクエストにキー自体が無い場合も未選択と同じ扱いになり
+ * `Unanswered` に補われる（＝S8のPATCHは部分更新ではなく全置換）。** S8は現在の値を
+ * 常にプリフィルした3項目（`nickname`／`age_group`／`child_age_group`）を毎回送信する
+ * フォーム（`ProfileEdit.vue`）が唯一の送信元のため実害は無いが、将来「ニックネームだけ
+ * 送る部分フォーム」等を追加する場合はこの前提が壊れる（未送信キーが `Unanswered` に
+ * 巻き戻る）点に注意する。部分更新にしたい場合は `prepareForValidation()` を
+ * `$this->has()` で分岐させるか、store/update でFormRequestを分ける必要がある。
+ *
  * @see docs/implementation-plan.md「M2 プロフィール（S2, S8）」
  */
 class ProfileRequest extends FormRequest

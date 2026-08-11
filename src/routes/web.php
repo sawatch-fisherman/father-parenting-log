@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GoogleSocialiteController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\EnsureProfileIsComplete;
+use App\Http\Middleware\RedirectIfProfileIsComplete;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,8 +16,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile/register', [ProfileController::class, 'create'])->name('profile.register');
-    Route::post('/profile', [ProfileController::class, 'store'])->name('profile.store');
+    Route::middleware(RedirectIfProfileIsComplete::class)->group(function () {
+        Route::get('/profile/register', [ProfileController::class, 'create'])->name('profile.register');
+        Route::post('/profile', [ProfileController::class, 'store'])->name('profile.store');
+    });
+
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     Route::middleware(EnsureProfileIsComplete::class)->group(function () {

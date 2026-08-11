@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Inertia::render('Settings/ProfileEdit')（ProfileController@edit）が読み込むページコンポーネント（S8）。
 // 閲覧専用画面は別途用意せず、この画面が閲覧を兼ねる。
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import ProfileFormFields from '@/Components/ProfileFormFields.vue';
 import { useTrans } from '@/composables/useTrans';
 
@@ -38,10 +38,11 @@ function submit(): void {
         <div class="p-4">
             <!--
               settings.index（S7）はM8で実装予定のため、それまでの暫定リンク先として home へ戻す。
+              SPA内遷移のため <Link> を使う（生の <a> だとフルページリロードになる）。
             -->
-            <a href="/" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <Link href="/" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 {{ t('profile.back') }}
-            </a>
+            </Link>
         </div>
 
         <div class="flex flex-1 flex-col items-center px-4">
