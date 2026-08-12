@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\AgeGroup;
 use App\Enums\ChildAgeGroup;
+use App\Http\Middleware\RedirectIfProfileIsComplete;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\UserSlotConfig;
@@ -232,7 +233,13 @@ class ProfileControllerTest extends TestCase
 
         // Act & Assert
         $this->actingAs($user)->get('/profile/register')->assertOk();
-        $this->actingAs($user)->post('/logout')->assertRedirect(route('login'));
+        $this->actingAs($user)->post('/profile', ['nickname' => 'とと'])->assertRedirect(route('home'));
+
+        // Arrange: ログアウトは別ユーザーで検証する（直前のPOSTで既にプロフィール登録済みのため）
+        $anotherUser = User::factory()->create();
+
+        // Act & Assert
+        $this->actingAs($anotherUser)->post('/logout')->assertRedirect(route('login'));
     }
 
     /**
@@ -277,6 +284,36 @@ class ProfileControllerTest extends TestCase
             ->where('profile.nickname', 'とと')
             ->where('profile.age_group', AgeGroup::Forties->value)
             ->where('profile.child_age_group', ChildAgeGroup::Two->value),
+        );
+    }
+
+    /**
+     * `Unanswered`（未回答）のプロフィールでS8を開くと、`age_group`／`child_age_group` が
+     * `0` ではなく `null` として渡ることを検証する。
+     *
+     * 選択肢（`ageGroups`／`childAgeGroups`）は `Unanswered` を除外しており、S2側の未選択も
+     * 空文字（プレースホルダ）で表現している。編集時に `0` をそのまま渡すと、どの `<option>`
+     * とも一致せずセレクトが空欄表示になってしまうため、サーバー側で `null` に正規化して
+     * 「未選択」の状態を再現できるようにする。
+     */
+    public function test_edit_page_normalizes_unanswered_to_null(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create([
+            'user_id' => $user->id,
+            'age_group' => AgeGroup::Unanswered,
+            'child_age_group' => ChildAgeGroup::Unanswered,
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->get('/settings/profile');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Settings/ProfileEdit')
+            ->where('profile.age_group', null)
+            ->where('profile.child_age_group', null),
         );
     }
 
@@ -377,6 +414,32 @@ class ProfileControllerTest extends TestCase
         // Assert
         $response->assertRedirect(route('home'));
         $this->assertDatabaseHas('profiles', ['user_id' => $user->id, 'nickname' => '最初の登録']);
+        $this->assertSame(1, Profile::query()->where('user_id', $user->id)->count());
+    }
+
+    /**
+     * `RedirectIfProfileIsComplete` の `exists()` チェック直後に別リクエストがINSERTを完了させる
+     * 同時実行のケースでも、500ではなく `home` へのリダイレクトで吸収されることを検証する。
+     *
+     * 事前チェックと書き込みが別トランザクションのため、ほぼ同時に複数タブから送信されると
+     * ミドルウェアをすり抜けて `store()` に到達しうる。真の並行実行はPHPUnitで再現しづらいため、
+     * ミドルウェアを無効化して「ガードをすり抜けて到達した」状態を模し、`store()` 側の
+     * UNIQUE制約違反キャッチが機能することを固定する。
+     */
+    public function test_a_unique_constraint_violation_in_store_is_absorbed_instead_of_erroring(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id, 'nickname' => '既存の登録']);
+
+        // Act
+        $response = $this->withoutMiddleware(RedirectIfProfileIsComplete::class)
+            ->actingAs($user)
+            ->post('/profile', ['nickname' => '競合した登録']);
+
+        // Assert
+        $response->assertRedirect(route('home'));
+        $this->assertDatabaseHas('profiles', ['user_id' => $user->id, 'nickname' => '既存の登録']);
         $this->assertSame(1, Profile::query()->where('user_id', $user->id)->count());
     }
 

@@ -11,8 +11,11 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * ログイン直後のcallback分岐（M1）だけでは、プロフィール未登録のまま `/` 等へ
  * 直接アクセスするケースを防げないため、`auth` 系ルートに重ねて適用する。
- * `profile.register`・`profile.store`・`logout`・`locale.update` には適用しない
- * （適用すると無限リダイレクトになる）。
+ * 以下の3ルートには適用しない（理由はそれぞれ異なる）：
+ * `profile.register`・`profile.store` は適用すると無限リダイレクトになるため、
+ * `logout` は適用するとプロフィール未登録ユーザーがログアウトできなくなる
+ * （無限ループではなくロックアウト）ため。`locale.update`（`routes/web.php`）は
+ * そもそも `auth` グループの外にあり、この一覧は対象外であることの確認のために挙げている。
  *
  * @see docs/implementation-plan.md「M2 プロフィール（S2, S8）」
  */

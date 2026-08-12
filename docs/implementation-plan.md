@@ -109,15 +109,16 @@ flowchart TD
 - **依存**：M1
 - **対応画面/機能**：S2（登録）・S8（編集）／[features.md](features.md)「プロフィール登録」／[screens.md](screens.md) `profile.register`・`profile.store`・`settings.profile.edit`・`settings.profile.update`
 - **タスク**：
-  - [ ] `ProfileController`（`create` / `store` / `edit` / `update`）、`ProfileRequest`（store・update 共用。`nickname` 必須、`age_group`/`child_age_group` 任意→未選択は `Unanswered` を設定）
-  - [ ] `store` 時に `config/totoops.php` の初期8個から `user_slot_configs` に8行を作成（登録直後は必ず8行。以降は最大8行＝空きスロットを許容する。[data-model.md](data-model.md) ⑤、[decisions.md](decisions.md) §1.3）
-  - [ ] Policy 不要（ID を URL に含めず常に自分のプロフィールを操作。[screens.md](screens.md) Controller構成の補足）
-  - [ ] Vue：`Pages/Profile/Register.vue`（S2）、`Pages/Settings/ProfileEdit.vue`（S8。閲覧も兼ねる）
+  - [x] `ProfileController`（`create` / `store` / `edit` / `update`）、`ProfileRequest`（store・update 共用。`nickname` 必須、`age_group`/`child_age_group` 任意→未選択は `Unanswered` を設定）
+  - [x] `store` 時に `config/totoops.php` の初期8個から `user_slot_configs` に8行を作成（登録直後は必ず8行。以降は最大8行＝空きスロットを許容する。[data-model.md](data-model.md) ⑤、[decisions.md](decisions.md) §1.3）
+  - [x] Policy 不要（ID を URL に含めず常に自分のプロフィールを操作。[screens.md](screens.md) Controller構成の補足）
+  - [x] Vue：`Pages/Profile/Register.vue`（S2）、`Pages/Settings/ProfileEdit.vue`（S8。閲覧も兼ねる）
     - **`child_age_group` のラベルは「いちばん下のお子さんの年齢帯」とし、セレクトの下に「お子さんが複数いる場合は、いちばん下のお子さんを選んでください」という補足文を常時表示する**（多子世帯が迷わないための担保。単一選択で確定済み。[decisions.md](decisions.md) §1.1、[wireframes.md](wireframes.md) S2・S8）。文言は `lang/ja` のキーとして追加する
-  - [ ] **`EnsureProfileIsComplete` ミドルウェア**：`$request->user()->profile()->exists()`（`profiles.user_id` の `UNIQUE` インデックスを使った存在確認）が `false` なら `profile.register` へリダイレクト。`auth` 系ルート全体に適用し、`profile.register`・`profile.store`・`logout`・`locale.update` は対象外にする（無限リダイレクト防止）。ログイン直後の callback 分岐（M1）だけでなく、プロフィール未登録のまま `/` 等へ直接アクセスした場合もこのミドルウェアで防ぐ
+  - [x] **`EnsureProfileIsComplete` ミドルウェア**：`$request->user()->profile()->exists()`（`profiles.user_id` の `UNIQUE` インデックスを使った存在確認）が `false` なら `profile.register` へリダイレクト。`auth` 系ルート全体に適用し、`profile.register`・`profile.store`・`logout`・`locale.update` は対象外にする（無限リダイレクト防止）。ログイン直後の callback 分岐（M1）だけでなく、プロフィール未登録のまま `/` 等へ直接アクセスした場合もこのミドルウェアで防ぐ
 - **テスト観点**：profile 作成＋slot 8行生成、`nickname` 必須バリデーション、未選択時 `Unanswered`、更新、プロフィール未登録ユーザーが `/` 等へ直接アクセスすると `profile.register` へリダイレクトされる。
 - **完了条件**：DoD ＋ 登録後に S3 が「8アイコン表示可能な状態」になる。
 - **ブロッカー**：未決 #11（初期8個の中身）。暫定リストで着手可。
+- **備考**：レビュー対応で計画に無い `RedirectIfProfileIsComplete` ミドルウェアを追加した。`EnsureProfileIsComplete`（未登録→`profile.register`へ誘導）の逆方向で、登録済みユーザーが `profile.register`・`profile.store` に再訪・再送しても `UNIQUE(profiles.user_id)` 違反で500にならず `home` へ誘導する。
 
 ---
 

@@ -13,8 +13,9 @@ interface Option {
 const props = defineProps<{
     profile: {
         nickname: string;
-        age_group: number;
-        child_age_group: number;
+        // `Unanswered`（未回答）はサーバー側でnullに正規化されて渡ってくる（S2の未選択と同じ表現にするため）。
+        age_group: number | null;
+        child_age_group: number | null;
     };
     ageGroups: Option[];
     childAgeGroups: Option[];
@@ -24,8 +25,8 @@ const { t } = useTrans();
 
 const form = useForm({
     nickname: props.profile.nickname,
-    age_group: props.profile.age_group as number | '',
-    child_age_group: props.profile.child_age_group as number | '',
+    age_group: (props.profile.age_group ?? '') as number | '',
+    child_age_group: (props.profile.child_age_group ?? '') as number | '',
 });
 
 function submit(): void {
