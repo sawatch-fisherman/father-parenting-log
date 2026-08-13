@@ -3,7 +3,61 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * src/.claude/ は .gitignore の例外指定で追跡対象になっているため Tailwind の自動ソース検出に拾われる。
+ * スキル文書にはクラス名の対応表やコード例が載っており、そのままだとドキュメントが出荷CSSを生成してしまう
+ * （実測：bg-gray-100 のような DESIGN.md 禁止クラスまで含まれていた）。エージェント向けの文書なので除外する。
+ */
+@source not '../../.claude';
+
+/*
+ * DESIGN.md のトークンをTailwind v4のCSSファーストconfigとして定義する。
+ * DESIGN.mdはダークモードを定義していない（背景はBackground #FBF9F6の単一トーンのみ）ため、
+ * dark: バリアント用のトークンは用意しない。
+ *
+ * Text Primary を --color-text-primary としているのは意図的。--text-primary にすると
+ * フォントサイズの名前空間に入り、--color-primary が生成する text-primary と衝突するため。
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* 6.1 フォントファミリー */
+    --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* 5.2 カラーパレット */
+    --color-primary: #6ec24c;
+    --color-primary-hover: #5bb53b;
+    --color-primary-deep: #2d7916;
+    --color-primary-subtle: #eefae5;
+    --color-secondary: #5b5650;
+    --color-accent: #d97757;
+    --color-background: #fbf9f6;
+    --color-surface: #ffffff;
+    --color-text-primary: #33302c;
+    --color-text-secondary: #6e6a64;
+    --color-border: #dedad3;
+    --color-success: #2f6690;
+    --color-warning: #b4791e;
+    --color-error: #b3435a;
+    --color-info: #5d82a0;
+
+    /* 6.2 サイズ・行間（ウェイトはクラス側で font-semibold / font-bold を併用する） */
+    --text-display: 28px;
+    --text-display--line-height: 1.4;
+    --text-heading-l: 22px;
+    --text-heading-l--line-height: 1.4;
+    --text-heading-m: 18px;
+    --text-heading-m--line-height: 1.5;
+    --text-body: 16px;
+    --text-body--line-height: 1.7;
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 1.6;
+    --text-label: 15px;
+    --text-label--line-height: 1.4;
+}
+
+@layer base {
+    /* 6.4 改行・折り返し（称号名など和文と絵文字・英数字が混在する文字列で崩れないようにする） */
+    body {
+        overflow-wrap: break-word;
+    }
 }

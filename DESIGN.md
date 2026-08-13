@@ -2,7 +2,7 @@
 
 > TotoOps（開発名。前身 DadOps）のビジュアルデザイン指針。`docs/concept.md`・`docs/features.md`・`docs/screens.md`・`docs/wireframes.md`・`docs/data-model.md`・`docs/privacy.md`・CLAUDE.md の内容と矛盾しないことを前提に、独自に設計したもの。
 > 複数の公開デザイン資料から一般化した原則は `.claude/references/design/notes/extracted-design-principles.md` を参照。本書は、それらの原則と本プロジェクトの要件を踏まえて策定した**TotoOps専用のデザイン方針**である。
-> 現状 `src/` はLaravelの初期スキャフォールドのままで、カスタムUIは未実装。本書は「これから作る」ための設計図であり、既存実装を追認したものではない。
+> 本書は「これから作る」ための設計図であり、既存実装を追認したものではない。M1・M2 で実装した画面（S1ログイン／S2プロフィール登録／S8プロフィール編集）には本書の色・タイポグラフィ・コンポーネント仕様を適用済み。M3 以降の画面（記録・履歴・集計・設定）とグローバルナビ・トースト・モーダルは未実装。
 
 ---
 
@@ -95,7 +95,7 @@ Success/Warning/Error/Infoはいずれも、色の変化だけでなく**アイ�
 --font-sans: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif;
 ```
 
-現在の `src/resources/css/app.css` の `@theme` は `--font-sans: 'Instrument Sans'`（英字のみのフォント）になっており、日本語グリフを持たないため**要更新**（16章参照）。
+`src/resources/css/app.css` の `@theme` に反映済み（`--font-sans`）。Webフォント本体は Bunny Fonts 経由で `src/resources/views/app.blade.php` が読み込む（Google Fonts と同一の資産を、IPアドレスを記録しないCDNで配信するサービス。`docs/privacy.md` の「個人情報は最小限に」の方針に沿うため直の Google Fonts は使わない）。
 
 和文と欧文で別フォントを使う、あるいは同じフォントの複数ウェイトを別ファイルとして読み込む、といった構成は採用しない。フォントは1系統・Google Fontsで無償配信されているもの1つに絞ることで、ライセンス費用・読み込みコストの両方を最小化する。ウェイトはTailwind標準の3段階（400 / 500 / 700）のみを使い、4章の「フラットで素直な組版」という方向性を支える。
 
@@ -327,6 +327,5 @@ TotoOpsのデザインは、公開されている一般的なUI/UXの知見を�
 ## 未確認事項（実装着手前に確認が必要）
 
 - **アイコン方針（13章）**：絵文字＋Heroiconsという組み合わせは本書作成時点の設計判断であり、`docs/decisions.md` に既存の決定事項がないか未確認。矛盾がある場合は `docs/decisions.md` の記載を優先する。
-- **フォント設定の更新**：`src/resources/css/app.css` の `@theme` は現状 `--font-sans: 'Instrument Sans'`（英字専用）のみ。実装時にNoto Sans JPの読み込み設定と `@theme` トークンへの反映が必要（6.1節）。
-- **Tailwind `@theme` へのトークン追加**：5〜8章で定義した色・角丸・スペーシングは、実装時に `src/resources/css/app.css` の `@theme` ブロックへカスタムプロパティとして追加する必要がある（現状は未定義）。
+- **Tailwind `@theme` へのトークン追加（部分的に完了）**：5.2節の色14トークンと6.2節のタイポグラフィ6トークン、および6.1節のフォント設定は `src/resources/css/app.css` の `@theme` に反映済み。角丸（6/12/16/20px）とスペーシングは Tailwind 標準のスケールで表現できるため独自トークンを作っていない。8.2節の影 Level 1/2 は使用箇所（カードhover・モーダル）が未実装のため未定義で、実装時に追加が必要。
 - **Heroiconsの追加**：`src/package.json` に依存関係として追加する必要がある（現状未導入）。

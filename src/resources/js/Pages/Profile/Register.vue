@@ -28,9 +28,9 @@ function submit(): void {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col items-center justify-center bg-white px-4 text-gray-900 dark:bg-gray-900 dark:text-white">
+    <div class="flex min-h-screen flex-col items-center bg-background px-4 pt-6 text-text-primary">
         <form class="w-full max-w-sm space-y-6" @submit.prevent="submit">
-            <h1 class="text-center text-2xl font-semibold">{{ t('profile.register_title') }}</h1>
+            <h1 class="text-center text-display font-bold">{{ t('profile.register_title') }}</h1>
 
             <ProfileFormFields
                 :form="form"
@@ -41,7 +41,7 @@ function submit(): void {
 
             <button
                 type="submit"
-                class="w-full rounded-md bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                class="w-full rounded-xl border border-primary-deep bg-primary px-5 py-3 text-label font-semibold text-text-primary hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25 disabled:cursor-not-allowed disabled:border-border disabled:bg-border disabled:text-text-secondary"
                 :disabled="form.processing"
             >
                 {{ t('profile.register_submit') }}

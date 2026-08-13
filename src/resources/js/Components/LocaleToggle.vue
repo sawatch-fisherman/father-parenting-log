@@ -19,24 +19,31 @@ function setLocale(locale: string): void {
 
     router.post('/locale', { locale }, { preserveScroll: true });
 }
+
+// min-h-11/min-w-11 は DESIGN.md 9章のタップ領域44×44pxを満たすための下限。
+const buttonClass =
+    'flex min-h-11 min-w-11 items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25';
+
+// 選択中は白背景に置く緑の文字なので Primary ではなく Primary Deep を使う（DESIGN.md 5.2）。
+const activeClass = 'text-primary-deep';
+
+const inactiveClass = 'text-text-secondary hover:text-text-primary';
 </script>
 
 <template>
-    <div class="flex items-center gap-1 text-sm">
+    <div class="flex items-center gap-1 text-body-sm">
         <!-- :class は動的クラス切り替え、@click はクリックイベントのハンドラ登録 -->
         <button
             type="button"
-            class="font-medium"
-            :class="page.props.locale === 'ja' ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+            :class="[buttonClass, page.props.locale === 'ja' ? activeClass : inactiveClass]"
             @click="setLocale('ja')"
         >
             JA
         </button>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <span class="text-border">|</span>
         <button
             type="button"
-            class="font-medium"
-            :class="page.props.locale === 'en' ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+            :class="[buttonClass, page.props.locale === 'en' ? activeClass : inactiveClass]"
             @click="setLocale('en')"
         >
             EN

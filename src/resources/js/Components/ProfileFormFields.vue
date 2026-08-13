@@ -27,46 +27,55 @@ defineProps<{
 }>();
 
 const { t } = useTrans();
+
+// DESIGN.md 10章 Forms の入力欄仕様。3つのフィールドで同じ指定を繰り返さないため定数に切り出す。
+// 枠線色だけはエラー有無で切り替わるので、ここには含めず各フィールド側で付ける（11章 Error）。
+const inputClass =
+    'w-full rounded-md border bg-surface px-4 py-3 text-body text-text-primary focus:border-primary-deep focus:outline-none focus:ring-[3px] focus:ring-primary-deep/25';
+
+const labelClass = 'block text-label font-semibold text-text-primary';
+
+const errorClass = 'text-body-sm text-error';
 </script>
 
 <template>
     <div class="space-y-6">
         <div class="space-y-1">
-            <label for="nickname" class="block text-sm font-medium">{{ nicknameLabel }}</label>
+            <label for="nickname" :class="labelClass">{{ nicknameLabel }}</label>
             <input
                 id="nickname"
                 v-model="form.nickname"
                 type="text"
                 maxlength="50"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                :class="[inputClass, form.errors.nickname ? 'border-error' : 'border-border']"
             />
-            <p v-if="form.errors.nickname" class="text-sm text-red-600 dark:text-red-400">{{ form.errors.nickname }}</p>
+            <p v-if="form.errors.nickname" :class="errorClass">{{ form.errors.nickname }}</p>
         </div>
 
         <div class="space-y-1">
-            <label for="age_group" class="block text-sm font-medium">{{ t('profile.age_group_label') }}</label>
+            <label for="age_group" :class="labelClass">{{ t('profile.age_group_label') }}</label>
             <select
                 id="age_group"
                 v-model="form.age_group"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                :class="[inputClass, form.errors.age_group ? 'border-error' : 'border-border']"
             >
                 <option value="">{{ t('profile.unselected') }}</option>
                 <option v-for="option in ageGroups" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
-            <p v-if="form.errors.age_group" class="text-sm text-red-600 dark:text-red-400">{{ form.errors.age_group }}</p>
+            <p v-if="form.errors.age_group" :class="errorClass">{{ form.errors.age_group }}</p>
         </div>
 
         <div class="space-y-1">
-            <label for="child_age_group" class="block text-sm font-medium">{{ t('profile.child_age_group_label') }}</label>
+            <label for="child_age_group" :class="labelClass">{{ t('profile.child_age_group_label') }}</label>
             <select
                 id="child_age_group"
                 v-model="form.child_age_group"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-800"
+                :class="[inputClass, form.errors.child_age_group ? 'border-error' : 'border-border']"
             >
                 <option value="">{{ t('profile.unselected') }}</option>
                 <option v-for="option in childAgeGroups" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
-            <p v-if="form.errors.child_age_group" class="text-sm text-red-600 dark:text-red-400">
+            <p v-if="form.errors.child_age_group" :class="errorClass">
                 {{ form.errors.child_age_group }}
             </p>
         </div>
