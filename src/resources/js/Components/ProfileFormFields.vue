@@ -66,7 +66,6 @@ const { t } = useTrans();
                 <option value="">{{ t('profile.unselected') }}</option>
                 <option v-for="option in childAgeGroups" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('profile.child_age_group_note') }}</p>
             <p v-if="form.errors.child_age_group" class="text-sm text-red-600 dark:text-red-400">
                 {{ form.errors.child_age_group }}
             </p>
