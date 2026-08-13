@@ -54,7 +54,7 @@ function submit(): void {
                     :form="form"
                     :age-groups="ageGroups"
                     :child-age-groups="childAgeGroups"
-                    :nickname-label="t('profile.nickname_label')"
+                    :nickname-label="t('profile.nickname_required_label')"
                 />
 
                 <button

@@ -20,6 +20,9 @@ use Inertia\Response;
  */
 class ProfileController extends Controller
 {
+    /**
+     * プロフィール登録画面（S2）を表示する。
+     */
     public function create(): Response
     {
         return Inertia::render('Profile/Register', [
@@ -28,6 +31,9 @@ class ProfileController extends Controller
         ]);
     }
 
+    /**
+     * プロフィールを新規登録し、初期スロット設定を作成する。
+     */
     public function store(ProfileRequest $request): RedirectResponse
     {
         /** @var User $user */
@@ -35,7 +41,7 @@ class ProfileController extends Controller
 
         try {
             DB::transaction(function () use ($request, $user): void {
-                $user->profile()->create($request->profileData());
+                $user->profile()->create($request->validated());
 
                 $user->userSlotConfigs()->createMany(
                     collect(Config::array('totoops.initial_slot_care_action_ids'))
@@ -58,6 +64,9 @@ class ProfileController extends Controller
         return redirect()->route('home');
     }
 
+    /**
+     * プロフィール編集画面（S8）を表示する。
+     */
     public function edit(Request $request): Response
     {
         /** @var User $user */
@@ -78,18 +87,27 @@ class ProfileController extends Controller
         ]);
     }
 
+    /**
+     * プロフィールを更新する。
+     */
     public function update(ProfileRequest $request): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $user->profile()->update($request->profileData());
+        // `$user->profile()->update()`（リレーション経由）はクエリビルダへ委譲され、
+        // `Profile` のミューテータ（null→Unansweredの正規化）を経由しないため、
+        // 一度モデルインスタンスを取得してからインスタンスの `update()` を呼ぶ。
+        $profile = $user->profile()->firstOrFail();
+        $profile->update($request->validated());
 
         // M8で settings.index（S7）ができるまでの暫定リダイレクト先。
         return redirect()->route('settings.profile.edit');
     }
 
     /**
+     * 年代の選択肢一覧を返す（未回答を除く）。
+     *
      * @return array<int, array{value: int, label: string}>
      */
     private function ageGroupOptions(): array
@@ -102,6 +120,8 @@ class ProfileController extends Controller
     }
 
     /**
+     * いちばん下のお子さんの年齢帯の選択肢一覧を返す（未回答を除く）。
+     *
      * @return array<int, array{value: int, label: string}>
      */
     private function childAgeGroupOptions(): array

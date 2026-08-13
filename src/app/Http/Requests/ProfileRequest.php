@@ -10,9 +10,11 @@ use Illuminate\Validation\Rule;
 /**
  * S2（登録）・S8（編集）で共用するプロフィールのバリデーション。
  *
- * `age_group`／`child_age_group` は未選択（空文字）を許可し、`profileData()` で
- * `AgeGroup::Unanswered`／`ChildAgeGroup::Unanswered` に補って返す
- * （カラム自体は NOT NULL のため、DB上のNULLではなく列挙値の「未回答」で表現する）。
+ * `age_group`／`child_age_group` は未選択（空文字）を許可する。空文字は
+ * `prepareForValidation()` で `null` に正規化され、`null` から `AgeGroup::Unanswered`／
+ * `ChildAgeGroup::Unanswered` への変換は `Profile` モデルのミューテータ
+ * （`Profile::ageGroup()`／`childAgeGroup()`）が担う（カラム自体は NOT NULL のため、
+ * DB上のNULLではなく列挙値の「未回答」で表現する）。
  *
  * **`store`／`update` とも、リクエストにキー自体が無い場合も未選択と同じ扱いになり
  * `Unanswered` に補われる（＝S8のPATCHは部分更新ではなく全置換）。** S8は現在の値を
@@ -52,25 +54,5 @@ class ProfileRequest extends FormRequest
             'age_group' => $this->age_group === '' ? null : $this->age_group,
             'child_age_group' => $this->child_age_group === '' ? null : $this->child_age_group,
         ]);
-    }
-
-    /**
-     * バリデーション済みの値を `Profile` へそのまま保存できる形に変換する。
-     *
-     * @return array{nickname: string, age_group: AgeGroup, child_age_group: ChildAgeGroup}
-     */
-    public function profileData(): array
-    {
-        $validated = $this->validated();
-
-        return [
-            'nickname' => $validated['nickname'],
-            'age_group' => isset($validated['age_group'])
-                ? AgeGroup::from((int) $validated['age_group'])
-                : AgeGroup::Unanswered,
-            'child_age_group' => isset($validated['child_age_group'])
-                ? ChildAgeGroup::from((int) $validated['child_age_group'])
-                : ChildAgeGroup::Unanswered,
-        ];
     }
 }
