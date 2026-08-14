@@ -44,7 +44,7 @@ function submit(): void {
             <!-- 補助的な操作なので Secondary の文字色を使う（DESIGN.md 5.2「控えめなラベル」） -->
             <Link
                 href="/"
-                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25"
+                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
             >
                 {{ t('profile.back') }}
             </Link>
@@ -63,7 +63,7 @@ function submit(): void {
 
                 <button
                     type="submit"
-                    class="w-full rounded-xl border border-primary-deep bg-primary px-5 py-3 text-label font-semibold text-text-primary hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25 disabled:cursor-not-allowed disabled:border-border disabled:bg-border disabled:text-text-secondary"
+                    class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
                     :disabled="form.processing"
                 >
                     {{ t('profile.edit_submit') }}

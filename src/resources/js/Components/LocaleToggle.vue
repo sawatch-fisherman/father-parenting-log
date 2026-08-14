@@ -22,10 +22,10 @@ function setLocale(locale: string): void {
 
 // min-h-11/min-w-11 は DESIGN.md 9章のタップ領域44×44pxを満たすための下限。
 const buttonClass =
-    'flex min-h-11 min-w-11 items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25';
+    'flex min-h-11 min-w-11 items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25';
 
-// 選択中は白背景に置く緑の文字なので Primary ではなく Primary Deep を使う（DESIGN.md 5.2）。
-const activeClass = 'text-primary-deep';
+// 選択中はブランド色で示す（DESIGN.md 5.2 の Primary「選択状態」）。
+const activeClass = 'text-primary';
 
 const inactiveClass = 'text-text-secondary hover:text-text-primary';
 </script>

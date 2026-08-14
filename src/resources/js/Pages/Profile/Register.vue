@@ -41,7 +41,7 @@ function submit(): void {
 
             <button
                 type="submit"
-                class="w-full rounded-xl border border-primary-deep bg-primary px-5 py-3 text-label font-semibold text-text-primary hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25 disabled:cursor-not-allowed disabled:border-border disabled:bg-border disabled:text-text-secondary"
+                class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
                 :disabled="form.processing"
             >
                 {{ t('profile.register_submit') }}

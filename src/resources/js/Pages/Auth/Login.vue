@@ -22,11 +22,8 @@ const page = usePage<SharedProps>();
 
         <div class="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
             <div class="space-y-2">
-                <!--
-                  ロゴは白背景に置く緑の文字なので Primary ではなく Primary Deep を使う。
-                  Primary はBackgroundに対して2.11:1しかなく、大きな文字の3:1を満たさない（DESIGN.md 5.3）。
-                -->
-                <h1 class="text-display font-bold text-primary-deep">TotoOps</h1>
+                <!-- ブランドロゴ色は Primary（DESIGN.md 5.2）。Background に対して約4.7:1 で本文基準を満たす -->
+                <h1 class="text-display font-bold text-primary">TotoOps</h1>
                 <p class="text-body text-text-secondary">{{ t('auth.tagline') }}</p>
             </div>
 
@@ -41,7 +38,7 @@ const page = usePage<SharedProps>();
             -->
             <a
                 href="/auth/google/redirect"
-                class="rounded-xl border border-primary-deep bg-primary px-5 py-3 text-label font-semibold text-text-primary hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-deep/25"
+                class="rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
             >
                 {{ t('auth.google_login') }}
             </a>
