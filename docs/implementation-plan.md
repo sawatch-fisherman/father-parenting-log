@@ -142,14 +142,14 @@ flowchart TD
 - **依存**：M3
 - **対応画面/機能**：S3短タップ・S4（その他）・S10（実施日時指定）／[features.md](features.md)「育児ログ登録」「育児行動管理（その他ボタン）」／[screens.md](screens.md) `care-logs.store`・`care-logs.create`・`care-actions.other`
 - **タスク**：
-  - [ ] `CareLogController`（`create`＝S10 / `store`＝共通登録）、`StoreCareLogRequest`（`care_action_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at` の範囲バリデーション＝「`config('totoops.care_log.backdate_days')` 日前の 00:00 〜 `now() + 5分`」**を含む。[decisions.md](decisions.md) §1.3）
-  - [ ] **遡り境界の算出を1箇所に集約する**：`today()->subDays(config('totoops.care_log.backdate_days'))`（＝「7日前の00:00」。`now()->subDays(7)` ではないので注意）を返すヘルパー（例：`App\Support\CareLogWindow::backdateFloor()`）を用意し、`StoreCareLogRequest`・`UpdateCareLogRequest`（M6）・`CareLogPolicy`（M6）・S10 の日付ピッカー範囲・S13 の「…」非活性判定（M6）が**すべて同じ値を参照する**。個別に日付計算を書くと1日ズレて「UI では操作できるがサーバーが弾く」行が生まれる（[decisions.md](decisions.md) §1.3）
-  - [ ] **`age_group` / `child_age_group` を `profiles` からコピーして保存する**（記録時点のスナップショット。ユーザー入力からは受け取らない。[data-model.md](data-model.md) ④）
-  - [ ] S10 の日付ピッカーの選択可能範囲を「7日前 〜 今日」に制限し、制限理由の補助テキストを添える（責めるトーンにしない。[wireframes.md](wireframes.md) S10）。**実施日が「今日」のときのみ時刻の上限を「現在＋5分」に制限する**（過去日は `00:00`〜`23:59`）。UI 側の制限はサーバー側バリデーションの代替ではなく二重担保
-  - [ ] `CareActionController@other`（`GET /care-actions/other`＝S4）：`user_slot_configs` に無い残りの育児行動を返す（MVP は17個中9個）
-  - [ ] `POST /care-logs`：**クライアントが `occurred_at`（秒精度）を必ず送信**。`UNIQUE(user_id, care_action_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
-  - [ ] Vue：S3短タップ＝タップ時刻送信＋送信中ボタン disable／長押し→S10。`Pages/CareLogs/Create.vue`（S10・日時指定）、`Pages/CareActions/Other.vue`（S4）
-  - [ ] 称号判定はこのスライスでは空配列スタブ（M5 で実装）
+  - [x] `CareLogController`（`create`＝S10 / `store`＝共通登録）、`StoreCareLogRequest`（`care_action_id` 実在＋スコープ、`occurred_at`、`memo` 任意。**`occurred_at` の範囲バリデーション＝「`config('totoops.care_log.backdate_days')` 日前の 00:00 〜 `now() + 5分`」**を含む。[decisions.md](decisions.md) §1.3）
+  - [x] **遡り境界の算出を1箇所に集約する**：`today()->subDays(config('totoops.care_log.backdate_days'))`（＝「7日前の00:00」。`now()->subDays(7)` ではないので注意）を返すヘルパー（例：`App\Support\CareLogWindow::backdateFloor()`）を用意し、`StoreCareLogRequest`・`UpdateCareLogRequest`（M6）・`CareLogPolicy`（M6）・S10 の日付ピッカー範囲・S13 の「…」非活性判定（M6）が**すべて同じ値を参照する**。個別に日付計算を書くと1日ズレて「UI では操作できるがサーバーが弾く」行が生まれる（[decisions.md](decisions.md) §1.3）
+  - [x] **`age_group` / `child_age_group` を `profiles` からコピーして保存する**（記録時点のスナップショット。ユーザー入力からは受け取らない。[data-model.md](data-model.md) ④）
+  - [x] S10 の日付ピッカーの選択可能範囲を「7日前 〜 今日」に制限し、制限理由の補助テキストを添える（責めるトーンにしない。[wireframes.md](wireframes.md) S10）。**実施日が「今日」のときのみ時刻の上限を「現在＋5分」に制限する**（過去日は `00:00`〜`23:59`）。UI 側の制限はサーバー側バリデーションの代替ではなく二重担保
+  - [x] `CareActionController@other`（`GET /care-actions/other`＝S4）：`user_slot_configs` に無い残りの育児行動を返す（MVP は17個中9個）
+  - [x] `POST /care-logs`：**クライアントが `occurred_at`（秒精度）を必ず送信**。`UNIQUE(user_id, care_action_id, occurred_at)` 衝突は「同じ日時に同じ記録があります」の分かりやすいバリデーションエラー（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ④）
+  - [x] Vue：S3短タップ＝タップ時刻送信＋送信中ボタン disable／長押し→S10。`Pages/CareLogs/Create.vue`（S10・日時指定）、`Pages/CareActions/Other.vue`（S4）
+  - [x] 称号判定はこのスライスでは空配列スタブ（M5 で実装）
 - **テスト観点**：1レコード作成、同一 `occurred_at` の二重送信ブロック、「その他」一覧がピン留め8個を除外、S10 分精度の衝突エラー、`occurred_at` 省略時の `now()` フォールバック、`now() + 5分` を超える未来日時が拒否される、`now() + 5分` 以内は許容される。
 - **完了条件**：DoD ＋ 短タップ／その他→S10 の両経路で記録できる。
 
