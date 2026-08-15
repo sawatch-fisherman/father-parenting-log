@@ -128,9 +128,9 @@ flowchart TD
 - **依存**：M2
 - **対応画面/機能**：S3（記録画面・表示のみ）・グローバルナビ／[features.md](features.md)「グローバルナビゲーション」／[screens.md](screens.md) `home`
 - **タスク**：
-  - [ ] `RecordController@index`（`GET /`）：`user_slot_configs` からピン留め済みの行（最大8行）を `slot_position` 順で取得して渡す。**行が無い `slot_position` は空きスロットとして描画する**（行数は常に8とは限らない。[data-model.md](data-model.md) ⑤）
-  - [ ] グローバルナビ Layout：モバイル＝下部タブバー／Web＝左サイドバー（記録S3・履歴S13・集計S12・設定S7）。未実装先はプレースホルダ遷移で可（[screens.md](screens.md)「共通UI」）
-  - [ ] Vue：`Layouts/AppLayout.vue`（ナビ）、`Pages/Record/Index.vue`（S3。4列×2段の8アイコングリッド＋「その他」ボタン。この時点では表示のみ）
+  - [x] `RecordController@index`（`GET /`）：`user_slot_configs` からピン留め済みの行（最大8行）を `slot_position` 順で取得して渡す。**行が無い `slot_position` は空きスロットとして描画する**（行数は常に8とは限らない。[data-model.md](data-model.md) ⑤）
+  - [x] グローバルナビ Layout：モバイル＝下部タブバー／Web＝左サイドバー（記録S3・履歴S13・集計S12・設定S7）。未実装先はプレースホルダ遷移で可（[screens.md](screens.md)「共通UI」）
+  - [x] Vue：`Layouts/AppLayout.vue`（ナビ）、`Pages/Record/Index.vue`（S3。4列×2段の8アイコングリッド＋「その他」ボタン。この時点では表示のみ）
 - **テスト観点**：index がピン留め済みの行を `slot_position` 順で返す、ピン留めが8行未満でも空きスロット付きで描画できる、未認証はリダイレクト。
 - **完了条件**：DoD ＋ ナビで4画面（プレースホルダ含む）を行き来できる。
 

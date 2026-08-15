@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\GoogleSocialiteController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecordController;
 use App\Http\Middleware\EnsureProfileIsComplete;
 use App\Http\Middleware\RedirectIfProfileIsComplete;
 use Illuminate\Support\Facades\Route;
@@ -24,11 +25,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     Route::middleware(EnsureProfileIsComplete::class)->group(function () {
-        // M3 の RecordController@index に置き換わる暫定プレースホルダ
-        Route::get('/', fn () => Inertia::render('Record/Index'))->name('home');
+        Route::get('/', [RecordController::class, 'index'])->name('home');
 
         Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
         Route::patch('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');
+
+        // M8 の SettingsController@index に置き換わる暫定プレースホルダ
+        Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings.index');
+
+        // M7 の StatsController@index に置き換わる暫定プレースホルダ
+        Route::get('/stats', fn () => Inertia::render('Stats/Index'))->name('stats.index');
+
+        // M6 の HistoryController@index に置き換わる暫定プレースホルダ
+        Route::get('/history', fn () => Inertia::render('History/Index'))->name('history.index');
     });
 });
 
