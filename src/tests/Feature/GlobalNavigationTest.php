@@ -40,6 +40,18 @@ class GlobalNavigationTest extends TestCase
     }
 
     /**
+     * ナビの4遷移先のURIだけを返す（リダイレクト系のテストはコンポーネント名を検証しないため）。
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function navUris(): iterable
+    {
+        foreach (self::navDestinations() as $key => $destination) {
+            yield $key => [$destination[0]];
+        }
+    }
+
+    /**
      * プロフィール登録済みユーザーが、ナビの4遷移先すべてに200でアクセスでき、
      * それぞれ対応するInertiaコンポーネントが返ることを検証する。
      */
@@ -61,8 +73,8 @@ class GlobalNavigationTest extends TestCase
     /**
      * 未認証で各ナビ遷移先にアクセスすると `login` へリダイレクトされることを検証する。
      */
-    #[DataProvider('navDestinations')]
-    public function test_nav_destination_redirects_unauthenticated_users_to_login(string $uri, string $component): void
+    #[DataProvider('navUris')]
+    public function test_nav_destination_redirects_unauthenticated_users_to_login(string $uri): void
     {
         // Act
         $response = $this->get($uri);
@@ -75,8 +87,8 @@ class GlobalNavigationTest extends TestCase
      * プロフィール未登録ユーザーが各ナビ遷移先へ直接アクセスすると
      * `profile.register` へリダイレクトされることを検証する（`EnsureProfileIsComplete`）。
      */
-    #[DataProvider('navDestinations')]
-    public function test_nav_destination_redirects_users_without_a_profile_to_registration(string $uri, string $component): void
+    #[DataProvider('navUris')]
+    public function test_nav_destination_redirects_users_without_a_profile_to_registration(string $uri): void
     {
         // Arrange
         $user = User::factory()->create();

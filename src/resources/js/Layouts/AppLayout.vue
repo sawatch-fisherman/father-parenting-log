@@ -5,34 +5,45 @@
 // 間もこのレイアウトのインスタンスを維持したまま中身（<slot />）だけを差し替える
 // （Bladeの@extends/@sectionと違い、ナビ自体は毎回作り直されない）。
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { useTrans } from '@/composables/useTrans';
 
 type NavKey = 'record' | 'history' | 'stats' | 'settings';
 
-defineProps<{
+const props = defineProps<{
     active: NavKey;
 }>();
 
 const { t } = useTrans();
 
-const navItems: { key: NavKey; label: string; href: string }[] = [
-    { key: 'record', label: t('nav.record'), href: '/' },
-    { key: 'history', label: t('nav.history'), href: '/history' },
-    { key: 'stats', label: t('nav.stats'), href: '/stats' },
-    { key: 'settings', label: t('nav.settings'), href: '/settings' },
-];
+// computed にしているのは、S7（設定画面）にロケール切替トグルが置かれるM8以降、
+// ロケール変更後もこのレイアウトが再マウントされずラベルだけ古い言語のまま残ることを防ぐため
+// （永続レイアウトのためインスタンスがページ遷移をまたいで維持される＝script setup直下の評価は1回きり）。
+const navItems = computed(() => [
+    { key: 'record' as const, label: t('nav.record'), href: '/' },
+    { key: 'history' as const, label: t('nav.history'), href: '/history' },
+    { key: 'stats' as const, label: t('nav.stats'), href: '/stats' },
+    { key: 'settings' as const, label: t('nav.settings'), href: '/settings' },
+]);
+
+// フォーカスリング（DESIGN.md 11章 Focus）。既存コンポーネント（LocaleToggle等）と同じ組み合わせ。
+const focusRingClass = 'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25';
 </script>
 
 <template>
     <div class="min-h-screen bg-background text-text-primary md:flex">
         <!-- デスクトップ：左サイドバー（DESIGN.md 10章 Navigation。幅220px・右端border） -->
-        <nav class="hidden shrink-0 border-r border-border bg-surface px-4 py-8 md:block md:w-[220px]">
+        <nav aria-label="グローバルナビゲーション" class="hidden shrink-0 border-r border-border bg-surface px-4 py-8 md:block md:w-55">
             <ul class="space-y-1">
                 <li v-for="item in navItems" :key="item.key">
                     <Link
                         :href="item.href"
-                        class="block rounded-md px-4 py-3 text-label font-semibold"
-                        :class="item.key === active ? 'bg-primary-subtle text-primary' : 'text-text-secondary hover:text-primary'"
+                        :aria-current="item.key === props.active ? 'page' : undefined"
+                        :class="[
+                            'block rounded-md px-4 py-3 text-label font-semibold',
+                            focusRingClass,
+                            item.key === props.active ? 'bg-primary-subtle text-primary' : 'text-text-secondary hover:text-primary',
+                        ]"
                     >
                         {{ item.label }}
                     </Link>
@@ -41,20 +52,24 @@ const navItems: { key: NavKey; label: string; href: string }[] = [
         </nav>
 
         <main class="flex-1 pb-24 md:pb-0">
-            <!-- 8.3 セクション構成：ナビを持つ画面はメインエリアをspace-xl(32px)の内側パディングで囲む -->
-            <div class="mx-auto max-w-[960px] p-8">
+            <!-- 8.1/8.3 セクション構成：モバイルはspace-md(16px)、デスクトップはspace-xl(32px)の内側パディング -->
+            <div class="mx-auto max-w-[960px] p-4 md:p-8">
                 <slot />
             </div>
         </main>
 
         <!-- モバイル：下部固定タブバー（DESIGN.md 10章 Navigation。高さ56px・上端border・Level2影） -->
-        <nav class="fixed inset-x-0 bottom-0 z-10 flex h-14 border-t border-border bg-surface shadow-level-2 md:hidden">
+        <nav aria-label="グローバルナビゲーション" class="fixed inset-x-0 bottom-0 z-10 flex h-14 border-t border-border bg-surface shadow-level-2 md:hidden">
             <Link
                 v-for="item in navItems"
                 :key="item.key"
                 :href="item.href"
-                class="flex min-w-11 flex-1 flex-col items-center justify-center text-label font-semibold"
-                :class="item.key === active ? 'text-primary' : 'text-text-secondary'"
+                :aria-current="item.key === props.active ? 'page' : undefined"
+                :class="[
+                    'flex min-w-11 flex-1 flex-col items-center justify-center text-label font-semibold',
+                    focusRingClass,
+                    item.key === props.active ? 'text-primary' : 'text-text-secondary',
+                ]"
             >
                 {{ item.label }}
             </Link>

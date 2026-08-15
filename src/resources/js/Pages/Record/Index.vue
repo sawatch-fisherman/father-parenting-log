@@ -7,7 +7,9 @@ import { useTrans } from '@/composables/useTrans';
 
 interface Slot {
     careActionId: number;
-    name: string;
+    // サーバー側（RecordController@index）は `careAction?->name` のnull安全演算子で取得しているため、
+    // 型としてはnullを許容する（実運用ではFK制約により常に存在するが、型は実装に合わせて揃える）。
+    name: string | null;
 }
 
 defineProps<{
@@ -38,7 +40,8 @@ defineOptions({
                 :key="index"
                 class="flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-surface px-2 text-center"
             >
-                <span v-if="slot" class="text-label font-semibold text-text-primary">{{ slot.name }}</span>
+                <!-- line-clamp-3：長い育児行動名（例「送迎（保育園・習い事等）」）でも正方形タイルからはみ出さないよう3行で切る -->
+                <span v-if="slot" class="line-clamp-3 text-label font-semibold text-text-primary">{{ slot.name }}</span>
                 <template v-else>
                     <span class="text-heading-m font-semibold text-text-secondary" aria-hidden="true">＋</span>
                     <span class="text-body-sm text-text-secondary">{{ t('record.empty_slot') }}</span>
@@ -50,7 +53,7 @@ defineOptions({
             <!-- M4でCareActionController@other（S4）へのLinkに置き換える -->
             <button
                 type="button"
-                class="rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary"
+                class="rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
             >
                 {{ t('record.other') }}
             </button>
