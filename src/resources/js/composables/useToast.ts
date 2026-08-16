@@ -11,17 +11,18 @@ import { readonly, ref } from 'vue';
  * - サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）→ `ToastHost` が watch して `show()` する
  * - クライアント起因（サーバー通信を伴わない操作）→ 各コンポーネントが直接 `show()` を呼ぶ
  *
+ * 現時点の用途は保存成功の通知だけで、色は Success 固定。DESIGN.md 10章はトーストに
+ * Success/Error 両方の色を認めているが、実際に成功以外を出す画面が現れる段階
+ * （M6 の「7日を過ぎた記録は変更できません」など）で、その用途に合う状態色を選んで足す。
+ *
  * @see DESIGN.md 10章「Dialogs and Notifications」・11章「Success」
  */
-
-export type ToastVariant = 'success' | 'error';
 
 export interface Toast {
     // 同じ文言を続けて表示したとき（同じ育児行動を連続で記録した場合など）にも
     // <Transition> が「別のトースト」と認識できるよう、表示ごとに一意なキーを振る。
     id: number;
     message: string;
-    variant: ToastVariant;
 }
 
 /**
@@ -54,13 +55,13 @@ export function useToast() {
     /**
      * トーストを表示する。表示中に呼ばれた場合は最新の内容で置き換え、消えるまでの時間も測り直す。
      */
-    function show(message: string, variant: ToastVariant = 'success'): void {
+    function show(message: string): void {
         clearTimer();
 
-        current.value = { id: nextId++, message, variant };
+        current.value = { id: nextId++, message };
 
         dismissTimer = setTimeout(dismiss, TOAST_DURATION_MS);
     }
 
-    return { current: readonly(current), show, dismiss };
+    return { current: readonly(current), show };
 }

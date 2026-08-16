@@ -26,7 +26,7 @@ watch(
     () => page.props.flash,
     (flash) => {
         if (flash?.success) {
-            show(flash.success, 'success');
+            show(flash.success);
         }
     },
     { immediate: true },
@@ -34,6 +34,7 @@ watch(
 
 // エラーは既定ではインラインバナーで出す方針のため（DESIGN.md 11章 Error は
 // 「再試行導線を必ず添える」ことを要求する）、`flash.error` はここでは拾わない。
+// そのため現時点で出るトーストは成功だけで、色・アイコンは Success 固定にしてある。
 </script>
 
 <template>
@@ -71,13 +72,10 @@ watch(
             <div
                 v-if="current"
                 :key="current.id"
-                :class="[
-                    'pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-white shadow-level-2',
-                    current.variant === 'success' ? 'bg-success' : 'bg-error',
-                ]"
+                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-success px-4 py-3 text-body-sm text-white shadow-level-2"
             >
                 <!-- 状態を色だけで伝えない（DESIGN.md 12章）。アイコンと文言を必ず併記する -->
-                <span aria-hidden="true">{{ current.variant === 'success' ? '✓' : '⚠️' }}</span>
+                <span aria-hidden="true">✓</span>
                 <span>{{ current.message }}</span>
             </div>
         </Transition>
