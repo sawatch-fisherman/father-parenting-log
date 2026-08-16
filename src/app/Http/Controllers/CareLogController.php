@@ -9,6 +9,7 @@ use App\Support\CareLogWindow;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,6 +38,7 @@ class CareLogController extends Controller
             ],
             'backdateFloorDate' => CareLogWindow::backdateFloor()->toDateString(),
             'todayDate' => now()->toDateString(),
+            'backdateDays' => Config::integer('totoops.care_log.backdate_days'),
         ]);
     }
 
@@ -69,9 +71,12 @@ class CareLogController extends Controller
             ]);
         }
 
-        return redirect()->route('home')->with(
-            'success',
-            __('care_logs.recorded', ['name' => $request->careAction()->name])
-        );
+        // 通常の共有props（`->with()`→session→`HandleInertiaRequests::share()`経由）だとInertiaが
+        // ページpropsをブラウザのhistory stateにキャッシュするため、ブラウザバックで復元した
+        // ページに古いメッセージが乗ったまま再表示されてしまう。`Inertia::flash()`はhistory state
+        // に永続化されない専用チャンネル（`page.flash`）に乗るため、この用途に正しく対応する。
+        Inertia::flash('success', __('care_logs.recorded', ['name' => $request->careAction()->name]));
+
+        return redirect()->route('home');
     }
 }

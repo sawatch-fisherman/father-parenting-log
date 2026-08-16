@@ -37,19 +37,27 @@ class InertiaSharedPropsTest extends TestCase
     }
 
     /**
-     * フラッシュされた成功メッセージが、全ページ共通のInertia props として渡ることを検証する。
+     * 通常のセッションフラッシュ（`session()->flash('success', ...)`）を積んでも、
+     * 全ページ共通のInertia props（`page.props.flash`）には`success`が含まれないことを検証する。
      *
-     * 記録の保存成功トーストは `CareLogController@store` のリダイレクトに乗った `success` を
-     * AppLayout の `ToastHost` が拾って表示するため、この共有が経路の要になる。
+     * 以前は`success`もここで共有していたが、通常の共有propsはInertiaがブラウザのhistory state
+     * にキャッシュするため、ブラウザバックで復元したページに古い成功メッセージが再表示される
+     * 不具合があった（review-results/pr-10-review-2.md）。保存成功トーストは`Inertia::flash()`
+     * （`page.flash`。history stateに乗らない専用チャンネル）経由に切り替えたため、通常の
+     * セッションフラッシュへ`success`を積む経路自体がもう存在しないことを固定する。
+     * `page.flash.success`自体は
+     * `CareLogControllerTest::test_it_flashes_a_success_message_naming_the_recorded_care_action`
+     * で、`flash.error`（引き続き通常の共有props）は`GoogleAuthenticationTest`で別途検証済み。
      */
-    public function test_shares_flash_success_message(): void
+    public function test_shared_flash_props_do_not_include_success(): void
     {
         // Arrange
         session()->flash('success', 'おむつ交換を記録しました');
 
         // Act & Assert
         $this->get('/login')->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('flash.success', 'おむつ交換を記録しました'),
+            ->where('flash.error', null)
+            ->missing('flash.success'),
         );
     }
 

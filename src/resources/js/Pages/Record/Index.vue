@@ -3,7 +3,7 @@
 // 短タップ＝タップ時刻を`occurred_at`として即記録（POST /care-logs）、
 // 長押し＝実施日時指定画面（S10）へ遷移（docs/wireframes.md S3, docs/decisions.md §1.3）。
 import { Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useTrans } from '@/composables/useTrans';
 
@@ -92,6 +92,12 @@ function startPress(event: PointerEvent, slot: Slot): void {
         return;
     }
 
+    // 前のタイマーを確実にクリアしてから新しいタイマーを張る。`pressTimer`はタイル間で共有される
+    // モジュール変数1組しかないため、これを怠るとマルチタッチ（タイルAに触れたまま指を増やして
+    // タイルBに触れる）でAのタイマー参照が失われ、Aを離してcancelPress()が走ってもクリアされない。
+    // 500ms後にAのタイマーが発火し、触れていないタイルAのS10へ勝手に遷移してしまう。
+    cancelPress();
+
     longPressTriggered = false;
     pressTimer = setTimeout(() => {
         longPressTriggered = true;
@@ -105,6 +111,10 @@ function cancelPress(): void {
         pressTimer = null;
     }
 }
+
+// 押している最中にグローバルナビ等で別画面へ遷移した場合も、タイマーが生き残っていると
+// 遷移直後にS10へ飛ばしてしまうため、アンマウント時に確実に解除する。
+onUnmounted(cancelPress);
 
 function endPress(event: PointerEvent, slot: Slot): void {
     // 右クリック等の副ボタンでの`pointerup`では即記録を発火しない

@@ -41,10 +41,13 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'locale' => App::getLocale(),
             'messages' => $this->loadMessages(App::getLocale()),
+            // `error` は各ページがインラインで表示する（DESIGN.md 11章 Error は再試行導線の併記を
+            // 求めるため）通常の共有props。`success`（トースト用）はここに含めない：
+            // 通常の共有propsはInertiaがブラウザのhistory stateにキャッシュするため、ブラウザバック
+            // で復元したページに古いメッセージが再表示されてしまう。トーストは代わりに
+            // `Inertia::flash()`（history stateに乗らない専用チャンネル。`page.flash`）経由で送る
+            // （`CareLogController@store`、`ToastHost.vue`参照）。
             'flash' => [
-                // `success` は AppLayout の ToastHost がトーストとして表示し、`error` は各ページが
-                // インラインで表示する（DESIGN.md 11章 Error は再試行導線の併記を求めるため）。
-                'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
         ];

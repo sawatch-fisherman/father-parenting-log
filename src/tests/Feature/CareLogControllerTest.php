@@ -88,8 +88,12 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
-     * 保存成功時に、記録した育児行動名を含むメッセージが `success` としてフラッシュされることを検証する。
+     * 保存成功時に、記録した育児行動名を含むメッセージが Inertia のフラッシュ専用チャンネル
+     * （`page.flash`）で送られることを検証する。
      *
+     * 通常のセッションフラッシュ（`->with()`）ではなく`Inertia::flash()`を使う理由は、
+     * `page.props`と違いブラウザのhistory stateに永続化されないため（ブラウザバックで復元した
+     * ページに古い成功メッセージが再表示されるのを防ぐ。review-results/pr-10-review-2.md）。
      * S3短タップは記録しても画面が変わらないため、このフラッシュを AppLayout の `ToastHost` が
      * トーストとして出すまでが成功フィードバックの経路になる（DESIGN.md 11章 Success）。
      */
@@ -108,7 +112,7 @@ class CareLogControllerTest extends TestCase
 
         // Assert
         $response->assertRedirect(route('home'));
-        $response->assertSessionHas('success', 'おむつ交換を記録しました');
+        $response->assertInertiaFlash('success', 'おむつ交換を記録しました');
     }
 
     /**
@@ -311,6 +315,10 @@ class CareLogControllerTest extends TestCase
     /**
      * `now() + 5分`を超える未来日時は拒否され、`messages()`で割り当てた専用文言が
      * 表示されることを検証する（理由は`test_occurred_at_before_the_backdate_floor_is_rejected`と同じ）。
+     *
+     * 文言には「端末の時刻設定をご確認ください」を含める。短タップは端末のローカル時計をそのまま
+     * 送信するため、端末TZがJST以外・時計がズレている場合にもこのエラーになりうる
+     * （review-results/pr-10-review-2.md）。
      */
     public function test_occurred_at_beyond_the_five_minute_future_buffer_is_rejected(): void
     {
@@ -327,7 +335,7 @@ class CareLogControllerTest extends TestCase
         ]);
 
         // Assert
-        $response->assertSessionHasErrors(['occurred_at' => '未来の日時は記録できません。']);
+        $response->assertSessionHasErrors(['occurred_at' => '未来の日時は記録できません。端末の時刻設定をご確認ください。']);
         $this->assertDatabaseMissing('care_logs', ['user_id' => $user->id]);
     }
 
@@ -386,7 +394,8 @@ class CareLogControllerTest extends TestCase
             ->where('careAction.id', $careAction->id)
             ->where('careAction.name', 'おむつ交換')
             ->where('backdateFloorDate', '2024-01-03')
-            ->where('todayDate', '2024-01-10'),
+            ->where('todayDate', '2024-01-10')
+            ->where('backdateDays', 7),
         );
     }
 

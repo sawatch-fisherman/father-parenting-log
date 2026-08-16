@@ -2,31 +2,35 @@
 // トースト通知の表示枠（DESIGN.md 10章「Dialogs and Notifications」・11章「Success」）。
 // AppLayout（永続レイアウト）に1つだけ置く前提で、状態は useToast() のモジュールスコープに持つ。
 //
-// サーバー flash（`flash.success`）の監視もここで行う。S3短タップもS10保存も
+// サーバー flash（`page.flash.success`）の監視もここで行う。S3短タップもS10保存も
 // `POST /care-logs` → S3 へのリダイレクトで完了するため、リダイレクト先に必ず居る
 // このレイアウトで拾えば、両経路の成功フィードバックを1箇所で賄える。
+//
+// `page.props`（通常の共有props）ではなく`page.flash`（Inertia v3のフラッシュ専用チャンネル）を
+// 監視する。`page.props`はInertiaがブラウザのhistory stateにキャッシュするため、そこに乗せると
+// ブラウザバックで復元したページに古い成功メッセージが再表示されてしまう。`page.flash`は
+// history stateに永続化されないため、この問題が起きない
+// （`CareLogController@store`の`Inertia::flash()`、`HandleInertiaRequests`参照）。
 import { usePage } from '@inertiajs/vue3';
 import { watch } from 'vue';
 import { useToast } from '@/composables/useToast';
 
-// サーバーの HandleInertiaRequests::share() が渡す flash の型
-interface SharedProps {
-    flash: { success: string | null; error: string | null };
-    [key: string]: unknown;
-}
-
-const page = usePage<SharedProps>();
+const page = usePage();
 const { current, show } = useToast();
 
-// `page.props.flash` はレスポンスごとに作り直されるため、同じ文言が続けて flash されても
+// `page.flash`はグローバルな`flashDataType`宣言をしていないため型上は`Record<string, unknown>`。
+// 実行時に文字列であることを確認してから使う。
+//
+// `page.flash`はレスポンスごとに作り直されるため、同じ文言が続けて flash されても
 // （同じ育児行動を連続で記録した場合など）オブジェクト参照が変わり watch が発火する。
 // `immediate: true` は、リダイレクト後の初回レンダリングで既に flash が乗っている
 // ケース（フルリロードを挟んだ場合）を取りこぼさないため。
 watch(
-    () => page.props.flash,
+    () => page.flash,
     (flash) => {
-        if (flash?.success) {
-            show(flash.success);
+        const success = flash?.success;
+        if (typeof success === 'string') {
+            show(success);
         }
     },
     { immediate: true },
