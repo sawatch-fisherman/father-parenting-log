@@ -21,6 +21,11 @@ use Illuminate\Validation\Rule;
  */
 class StoreCareLogRequest extends FormRequest
 {
+    /**
+     * {@see self::careAction()} が解決した育児行動のキャッシュ。
+     */
+    private ?CareAction $careAction = null;
+
     public function authorize(): bool
     {
         return true;
@@ -65,6 +70,23 @@ class StoreCareLogRequest extends FormRequest
             ],
             'memo' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /**
+     * バリデーション済みの `care_action_id` が指す育児行動を返す。
+     *
+     * 保存成功トーストに育児行動名を出すために `CareLogController@store` が使う。8個のタイルが
+     * 密に並ぶ S3 では「保存された」だけでなく「どれが保存されたか」まで示さないと、
+     * 誤タップに気付けないため（DESIGN.md 11章 Success）。
+     */
+    public function careAction(): CareAction
+    {
+        /** @var User $user */
+        $user = $this->user();
+
+        return $this->careAction ??= CareAction::query()
+            ->accessibleTo($user)
+            ->findOrFail($this->integer('care_action_id'));
     }
 
     /**

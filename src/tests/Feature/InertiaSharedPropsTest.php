@@ -37,6 +37,23 @@ class InertiaSharedPropsTest extends TestCase
     }
 
     /**
+     * フラッシュされた成功メッセージが、全ページ共通のInertia props として渡ることを検証する。
+     *
+     * 記録の保存成功トーストは `CareLogController@store` のリダイレクトに乗った `success` を
+     * AppLayout の `ToastHost` が拾って表示するため、この共有が経路の要になる。
+     */
+    public function test_shares_flash_success_message(): void
+    {
+        // Arrange
+        session()->flash('success', 'おむつ交換を記録しました');
+
+        // Act & Assert
+        $this->get('/login')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('flash.success', 'おむつ交換を記録しました'),
+        );
+    }
+
+    /**
      * 翻訳ファイルが未投入のロケールを選んでも、メッセージが日本語にフォールバックすることを検証する。
      *
      * `locale` prop 自体は選択したロケールのまま渡り、メッセージだけが補われる。

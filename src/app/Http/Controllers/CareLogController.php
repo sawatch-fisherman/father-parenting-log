@@ -69,6 +69,9 @@ class CareLogController extends Controller
             ]);
         }
 
-        return redirect()->route('home');
+        return redirect()->route('home')->with(
+            'success',
+            __('care_logs.recorded', ['name' => $request->careAction()->name])
+        );
     }
 }

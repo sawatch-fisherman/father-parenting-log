@@ -7,4 +7,5 @@ return [
     'time_label' => '実施時刻',
     'memo_label' => 'メモ（任意）',
     'submit' => '保存する',
+    'recorded' => ':nameを記録しました',
 ];

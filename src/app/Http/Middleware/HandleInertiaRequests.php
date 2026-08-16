@@ -42,6 +42,9 @@ class HandleInertiaRequests extends Middleware
             'locale' => App::getLocale(),
             'messages' => $this->loadMessages(App::getLocale()),
             'flash' => [
+                // `success` は AppLayout の ToastHost がトーストとして表示し、`error` は各ページが
+                // インラインで表示する（DESIGN.md 11章 Error は再試行導線の併記を求めるため）。
+                'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
         ];

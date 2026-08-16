@@ -88,6 +88,30 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
+     * 保存成功時に、記録した育児行動名を含むメッセージが `success` としてフラッシュされることを検証する。
+     *
+     * S3短タップは記録しても画面が変わらないため、このフラッシュを AppLayout の `ToastHost` が
+     * トーストとして出すまでが成功フィードバックの経路になる（DESIGN.md 11章 Success）。
+     */
+    public function test_it_flashes_a_success_message_naming_the_recorded_care_action(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create(['name' => 'おむつ交換']);
+
+        // Act
+        $response = $this->actingAs($user)->post('/care-logs', [
+            'care_action_id' => $careAction->id,
+            'occurred_at' => now()->format('Y-m-d H:i:s'),
+        ]);
+
+        // Assert
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('success', 'おむつ交換を記録しました');
+    }
+
+    /**
      * 空文字のメモが`NULL`に正規化されて保存されることを検証する。
      */
     public function test_an_empty_memo_is_stored_as_null(): void
