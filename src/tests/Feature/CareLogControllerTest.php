@@ -139,6 +139,78 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
+     * 別ユーザーが同じ`care_action_id`／`occurred_at`の記録を持っていても、
+     * 自分の記録がブロックされないことを検証する（`Rule::unique`の`user_id`スコープ）。
+     *
+     * `where('user_id', ...)`が将来のリファクタで欠落すると、他人の記録有無だけで
+     * 自分の記録がブロックされる（＝他ユーザーの記録有無が推測できる情報漏洩でもある）ため、
+     * DBのUNIQUE制約（`user_id`を含む）だけでなくアプリ層のスコープも別途固定する。
+     */
+    public function test_another_users_identical_care_log_does_not_block_registration(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create();
+
+        $otherUser = User::factory()->create();
+        CareLog::factory()->create([
+            'user_id' => $otherUser->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->post('/care-logs', [
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', [
+            'user_id' => $user->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+    }
+
+    /**
+     * 同一`occurred_at`でも育児行動が異なれば登録できることを検証する
+     * （`Rule::unique`が`care_action_id`もスコープに含んでいるため、時刻の一致だけでは弾かれない）。
+     */
+    public function test_same_occurred_at_with_a_different_care_action_is_accepted(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $firstCareAction = CareAction::factory()->create();
+        $secondCareAction = CareAction::factory()->create();
+
+        CareLog::factory()->create([
+            'user_id' => $user->id,
+            'care_action_id' => $firstCareAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->post('/care-logs', [
+            'care_action_id' => $secondCareAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', [
+            'user_id' => $user->id,
+            'care_action_id' => $secondCareAction->id,
+            'occurred_at' => '2024-01-10 09:00:00',
+        ]);
+    }
+
+    /**
      * 遡り境界が「その日の00:00」であり、`now()->subDays()`（時刻を保持したまま日付だけ引く）
      * ではないことを検証する。誤って`now()->subDays(7)`にすると、未明3時のような時刻では
      * 「7日前ちょうどの00:00」の記録まで誤って拒否してしまう（docs/decisions.md §1.3）。
@@ -163,7 +235,12 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
-     * 遡り境界（7日前の00:00）より1秒前は拒否されることを検証する。
+     * 遡り境界（7日前の00:00）より1秒前は拒否され、`messages()`で割り当てた
+     * 専用文言が表示されることを検証する。
+     *
+     * `lang/ja/validation.php` に汎用の `after_or_equal` キーが定義されていないため、
+     * `messages()` のキーが実際のルール名からズレると `validation.after_or_equal` という
+     * 生キーがそのまま表示されてしまう。キーの存在だけでなく文言まで固定して検知できるようにする。
      */
     public function test_occurred_at_before_the_backdate_floor_is_rejected(): void
     {
@@ -180,7 +257,7 @@ class CareLogControllerTest extends TestCase
         ]);
 
         // Assert
-        $response->assertSessionHasErrors('occurred_at');
+        $response->assertSessionHasErrors(['occurred_at' => '記録できるのは7日前までです。']);
         $this->assertDatabaseMissing('care_logs', ['user_id' => $user->id]);
     }
 
@@ -208,7 +285,8 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
-     * `now() + 5分`を超える未来日時は拒否されることを検証する。
+     * `now() + 5分`を超える未来日時は拒否され、`messages()`で割り当てた専用文言が
+     * 表示されることを検証する（理由は`test_occurred_at_before_the_backdate_floor_is_rejected`と同じ）。
      */
     public function test_occurred_at_beyond_the_five_minute_future_buffer_is_rejected(): void
     {
@@ -225,7 +303,7 @@ class CareLogControllerTest extends TestCase
         ]);
 
         // Assert
-        $response->assertSessionHasErrors('occurred_at');
+        $response->assertSessionHasErrors(['occurred_at' => '未来の日時は記録できません。']);
         $this->assertDatabaseMissing('care_logs', ['user_id' => $user->id]);
     }
 

@@ -29,6 +29,13 @@ defineOptions({
 // （サーバー側の`UNIQUE(user_id, care_action_id, occurred_at)`はあくまで最後の砦。docs/decisions.md §1.3）。
 const submitting = ref(false);
 
+// 直近の記録失敗のエラーメッセージ。バリデーション・重複エラーは`router.post`がページ遷移をせず
+// S3に留まるだけなので、明示的にインラインバナーへ出さないと利用者が失敗に気付けない
+// （DESIGN.md 11章 Error「通信エラー等の全体エラー：トーストまたはインラインバナーで表示し、
+// Primaryボタンでの再試行導線を必ず添える」）。
+const errorMessage = ref<string | null>(null);
+const lastFailedSlot = ref<Slot | null>(null);
+
 const LONG_PRESS_MS = 500;
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressTriggered = false;
@@ -48,6 +55,7 @@ function recordNow(slot: Slot): void {
         return;
     }
     submitting.value = true;
+    errorMessage.value = null;
 
     router.post(
         '/care-logs',
@@ -56,6 +64,10 @@ function recordNow(slot: Slot): void {
             occurred_at: formatOccurredAt(new Date()),
         },
         {
+            onError: (errors) => {
+                lastFailedSlot.value = slot;
+                errorMessage.value = Object.values(errors)[0] ?? t('record.record_failed_generic');
+            },
             onFinish: () => {
                 submitting.value = false;
             },
@@ -63,11 +75,23 @@ function recordNow(slot: Slot): void {
     );
 }
 
+function retryLastFailedRecord(): void {
+    if (lastFailedSlot.value) {
+        recordNow(lastFailedSlot.value);
+    }
+}
+
 function goToDateTimePicker(slot: Slot): void {
     router.visit(`/care-logs/create?care_action_id=${slot.careActionId}`);
 }
 
-function startPress(slot: Slot): void {
+function startPress(event: PointerEvent, slot: Slot): void {
+    // マウスの右クリック・中クリック（`button !== 0`）は無視する。無視しないと、
+    // ロングプレス用タイマーが副ボタンでも起動してしまう（endPress側の同ガードと対）。
+    if (event.button !== 0) {
+        return;
+    }
+
     longPressTriggered = false;
     pressTimer = setTimeout(() => {
         longPressTriggered = true;
@@ -82,11 +106,31 @@ function cancelPress(): void {
     }
 }
 
-function endPress(slot: Slot): void {
+function endPress(event: PointerEvent, slot: Slot): void {
+    // 右クリック等の副ボタンでの`pointerup`では即記録を発火しない
+    // （`@contextmenu.prevent`によりコンテキストメニューが出ないため、無視しないと無音でINSERTされる）。
+    if (event.button !== 0) {
+        cancelPress();
+        return;
+    }
+
     const wasLongPress = longPressTriggered;
     cancelPress();
 
     if (wasLongPress) {
+        return;
+    }
+
+    recordNow(slot);
+}
+
+function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
+    // <button>をキーボード（Enter/Space）で起動した場合、ブラウザは合成の`click`イベントを
+    // 発火させるが`pointerdown`/`pointerup`は発火しない。一方マウス・タッチ操作は既に
+    // `endPress`（pointerup）側で処理済みで、その後にも`click`が発火するため、ここで無条件に
+    // `recordNow`を呼ぶと二重送信になる。キーボード・支援技術由来のclickは`detail === 0`
+    // （クリック回数を持たない）になることを利用して区別する。
+    if (event.detail !== 0) {
         return;
     }
 
@@ -103,6 +147,24 @@ function endPress(slot: Slot): void {
             <h1 class="text-heading-l font-bold">{{ t('record.title') }}</h1>
         </header>
 
+        <div
+            v-if="errorMessage"
+            role="alert"
+            class="mb-4 flex items-center justify-between gap-3 rounded-md border border-error bg-surface px-4 py-3 text-body-sm text-error"
+        >
+            <span class="flex items-center gap-2">
+                <span aria-hidden="true">⚠️</span>
+                <span>{{ errorMessage }}</span>
+            </span>
+            <button
+                type="button"
+                class="shrink-0 rounded-xl bg-primary px-3 py-2 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                @click="retryLastFailedRecord"
+            >
+                {{ t('record.retry') }}
+            </button>
+        </div>
+
         <!-- グリッドは4列×2段固定（docs/wireframes.md S3） -->
         <div class="grid grid-cols-4 gap-2">
             <template v-for="(slot, index) in slots" :key="index">
@@ -111,15 +173,18 @@ function endPress(slot: Slot): void {
                     type="button"
                     :disabled="submitting"
                     :aria-label="`${slot.name}（${t('record.long_press_hint')}）`"
-                    class="flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-surface px-2 text-center focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
-                    @pointerdown="startPress(slot)"
-                    @pointerup="endPress(slot)"
+                    class="group flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-surface px-2 text-center focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border"
+                    @pointerdown="startPress($event, slot)"
+                    @pointerup="endPress($event, slot)"
                     @pointerleave="cancelPress"
                     @pointercancel="cancelPress"
+                    @click="handleKeyboardActivation($event, slot)"
                     @contextmenu.prevent
                 >
                     <!-- line-clamp-3：長い育児行動名（例「送迎（保育園・習い事等）」）でも正方形タイルからはみ出さないよう3行で切る -->
-                    <span class="line-clamp-3 text-label font-semibold text-text-primary">{{ slot.name }}</span>
+                    <span class="line-clamp-3 text-label font-semibold text-text-primary group-disabled:text-text-secondary">{{
+                        slot.name
+                    }}</span>
                 </button>
                 <div
                     v-else

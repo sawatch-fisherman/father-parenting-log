@@ -4,6 +4,7 @@
 // 単機能画面のためグローバルナビは表示しない（AppLayout未使用）。
 import { Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
 import { useTrans } from '@/composables/useTrans';
 
 interface CareAction {
@@ -19,6 +20,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useTrans();
+const { inputClass, labelClass, errorClass } = useFormFieldClasses();
 
 function pad(value: number): string {
     return String(value).padStart(2, '0');
@@ -73,49 +75,46 @@ function submit(): void {
                 <!-- ヘッダーには選択済みの育児行動名を表示のみ（docs/wireframes.md S10） -->
                 <h1 class="text-center text-heading-l font-bold">{{ careAction.name }}</h1>
 
+                <!-- `care_action_id`はS4のリンク経由の固定値で通常は入力欄を持たないが、
+                     万一サーバー側で無効と判定された場合に無反応にならないよう表示する -->
+                <p v-if="form.errors.care_action_id" :class="errorClass">{{ form.errors.care_action_id }}</p>
+
                 <div class="space-y-1">
-                    <label for="occurred_date" class="block text-label font-semibold text-text-primary">{{
-                        t('care_logs.date_label')
-                    }}</label>
+                    <label for="occurred_date" :class="labelClass">{{ t('care_logs.date_label') }}</label>
                     <input
                         id="occurred_date"
                         v-model="occurredDate"
                         type="date"
                         :min="backdateFloorDate"
                         :max="todayDate"
-                        class="w-full rounded-md border bg-surface px-4 py-3 text-body text-text-primary focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/25"
-                        :class="form.errors.occurred_at ? 'border-error' : 'border-border'"
+                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
                     />
                     <p class="text-body-sm text-text-secondary">{{ t('care_logs.date_help') }}</p>
                 </div>
 
                 <div class="space-y-1">
-                    <label for="occurred_time" class="block text-label font-semibold text-text-primary">{{
-                        t('care_logs.time_label')
-                    }}</label>
+                    <label for="occurred_time" :class="labelClass">{{ t('care_logs.time_label') }}</label>
                     <input
                         id="occurred_time"
                         v-model="occurredTime"
                         type="time"
                         :max="maxTime"
-                        class="w-full rounded-md border bg-surface px-4 py-3 text-body text-text-primary focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/25"
-                        :class="form.errors.occurred_at ? 'border-error' : 'border-border'"
+                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
                     />
                 </div>
 
-                <p v-if="form.errors.occurred_at" class="text-body-sm text-error">{{ form.errors.occurred_at }}</p>
+                <p v-if="form.errors.occurred_at" :class="errorClass">{{ form.errors.occurred_at }}</p>
 
                 <div class="space-y-1">
-                    <label for="memo" class="block text-label font-semibold text-text-primary">{{ t('care_logs.memo_label') }}</label>
+                    <label for="memo" :class="labelClass">{{ t('care_logs.memo_label') }}</label>
                     <textarea
                         id="memo"
                         v-model="form.memo"
                         maxlength="255"
                         rows="3"
-                        class="w-full rounded-md border bg-surface px-4 py-3 text-body text-text-primary focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/25"
-                        :class="form.errors.memo ? 'border-error' : 'border-border'"
+                        :class="[inputClass, form.errors.memo ? 'border-error' : 'border-border']"
                     ></textarea>
-                    <p v-if="form.errors.memo" class="text-body-sm text-error">{{ form.errors.memo }}</p>
+                    <p v-if="form.errors.memo" :class="errorClass">{{ form.errors.memo }}</p>
                 </div>
 
                 <button

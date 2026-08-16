@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // S2（登録）・S8（編集）で共用するプロフィール入力欄。`form`はInertiaの useForm() の戻り値を
 // そのまま受け取り、子から直接ミューテートする（同じリアクティブオブジェクトを参照するため反映される）。
+import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
 import { useTrans } from '@/composables/useTrans';
 
 interface Option {
@@ -28,14 +29,9 @@ defineProps<{
 
 const { t } = useTrans();
 
-// DESIGN.md 10章 Forms の入力欄仕様。3つのフィールドで同じ指定を繰り返さないため定数に切り出す。
+// DESIGN.md 10章 Forms の入力欄仕様（`useFormFieldClasses` に集約。他フォームとの二重管理を防ぐ）。
 // 枠線色だけはエラー有無で切り替わるので、ここには含めず各フィールド側で付ける（11章 Error）。
-const inputClass =
-    'w-full rounded-md border bg-surface px-4 py-3 text-body text-text-primary focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/25';
-
-const labelClass = 'block text-label font-semibold text-text-primary';
-
-const errorClass = 'text-body-sm text-error';
+const { inputClass, labelClass, errorClass } = useFormFieldClasses();
 </script>
 
 <template>

@@ -19,7 +19,8 @@ const { t } = useTrans();
 
 <template>
     <div class="flex min-h-screen flex-col bg-background text-text-primary">
-        <div class="px-4 pt-6">
+        <!-- デスクトップの最大幅960px（DESIGN.md 8.1節）。AppLayout本体（8.1/8.3節）と同じ幅に揃える -->
+        <div class="mx-auto w-full max-w-[960px] px-4 pt-6 md:px-8">
             <Link
                 href="/"
                 class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
@@ -28,10 +29,10 @@ const { t } = useTrans();
             </Link>
         </div>
 
-        <div class="px-4 pb-10">
+        <div class="mx-auto w-full max-w-[960px] px-4 pb-10 md:px-8">
             <h1 class="mb-4 text-heading-l font-bold">{{ t('care_actions.other_title') }}</h1>
 
-            <ul class="divide-y divide-border">
+            <ul v-if="careActions.length" class="divide-y divide-border">
                 <li v-for="careAction in careActions" :key="careAction.id">
                     <Link
                         :href="`/care-logs/create?care_action_id=${careAction.id}`"
@@ -42,6 +43,17 @@ const { t } = useTrans();
                     </Link>
                 </li>
             </ul>
+
+            <!-- Phase 2でカスタム育児行動をすべてピン留めすると発生しうる空状態（DESIGN.md 11章 Empty） -->
+            <div v-else class="flex flex-col items-center gap-4 py-16 text-center">
+                <p class="text-body text-text-secondary">{{ t('care_actions.empty') }}</p>
+                <Link
+                    href="/"
+                    class="rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                >
+                    {{ t('care_actions.empty_cta') }}
+                </Link>
+            </div>
         </div>
     </div>
 </template>
