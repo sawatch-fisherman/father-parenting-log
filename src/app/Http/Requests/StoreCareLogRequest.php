@@ -87,7 +87,7 @@ class StoreCareLogRequest extends FormRequest
 
         return $this->careAction ??= CareAction::query()
             ->accessibleTo($user)
-            ->findOrFail($this->integer('care_action_id'));
+            ->findOrFail($this->integer('care_action_id'), ['id', 'name']);
     }
 
     /**

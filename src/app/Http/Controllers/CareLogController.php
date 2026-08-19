@@ -29,7 +29,7 @@ class CareLogController extends Controller
 
         $careAction = CareAction::query()
             ->accessibleTo($user)
-            ->findOrFail($request->integer('care_action_id'));
+            ->findOrFail($request->integer('care_action_id'), ['id', 'name']);
 
         return Inertia::render('CareLogs/Create', [
             'careAction' => [
@@ -51,7 +51,7 @@ class CareLogController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $profile = $user->profile()->firstOrFail();
+        $profile = $user->profile()->firstOrFail(['age_group', 'child_age_group']);
 
         try {
             $user->careLogs()->create([
