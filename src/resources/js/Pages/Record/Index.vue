@@ -5,6 +5,7 @@
 import { Link, router } from '@inertiajs/vue3';
 import { onUnmounted, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
 
 interface Slot {
@@ -20,6 +21,7 @@ defineProps<{
 }>();
 
 const { t } = useTrans();
+const { show } = useToast();
 
 defineOptions({
     layout: [AppLayout, { active: 'record' }],
@@ -29,12 +31,15 @@ defineOptions({
 // （サーバー側の`UNIQUE(user_id, care_action_id, occurred_at)`はあくまで最後の砦。docs/decisions.md §1.3）。
 const submitting = ref(false);
 
-// 直近の記録失敗のエラーメッセージ。バリデーション・重複エラーは`router.post`がページ遷移をせず
-// S3に留まるだけなので、明示的にインラインバナーへ出さないと利用者が失敗に気付けない
-// （DESIGN.md 11章 Error「通信エラー等の全体エラー：トーストまたはインラインバナーで表示し、
-// Primaryボタンでの再試行導線を必ず添える」）。
+// 直近の記録失敗のエラーメッセージ。バリデーションエラー（`occurred_at`重複を除く。下記参照）は
+// `router.post`がページ遷移をせずS3に留まるだけなので、明示的にインラインバナーへ出さないと
+// 利用者が失敗に気付けない（DESIGN.md 11章 Error）。
+//
+// 「もう一度試す」ボタンは置かない：このエラーが起こりうる原因（未来日時・無効なcare_action_id）は
+// いずれも同じ内容を再送しても直らない（端末時計は変わらない・IDは変わらない）ため、押しても
+// 直らないボタンを出すと誤解を招く。本物の通信障害（ネットワーク切断等）へのリトライ導線は
+// 別途対応する（review-results/pr-10-review-2.mdのMedium「通信エラー」は本ラウンドでは対象外）。
 const errorMessage = ref<string | null>(null);
-const lastFailedSlot = ref<Slot | null>(null);
 
 const LONG_PRESS_MS = 500;
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -65,20 +70,26 @@ function recordNow(slot: Slot): void {
         },
         {
             onError: (errors) => {
-                lastFailedSlot.value = slot;
-                errorMessage.value = Object.values(errors)[0] ?? t('record.record_failed_generic');
+                const message = Object.values(errors)[0];
+
+                // `occurred_at`重複エラーは、クライアント側の`submitting`ガード（このタイル自身が
+                // 送信中はdisableされる）をすり抜けた二重送信（別タブでの同時タップ等）でしか
+                // 起こらない。その場合、片方のリクエストは既に成功して記録が完了しているため、
+                // 利用者から見れば何も失敗していない。エラーとして出すと「もう一度試す」を誘発し、
+                // 実際に押されると新しい`occurred_at`で本物の重複記録を作ってしまうため、
+                // エラーではなく通常の成功トーストとして扱う（お互いの意図は達成されている）。
+                if (message === t('validation.care_log_occurred_at_duplicate')) {
+                    show(t('care_logs.recorded', { name: slot.name ?? '' }));
+                    return;
+                }
+
+                errorMessage.value = message ?? t('record.record_failed_generic');
             },
             onFinish: () => {
                 submitting.value = false;
             },
         },
     );
-}
-
-function retryLastFailedRecord(): void {
-    if (lastFailedSlot.value) {
-        recordNow(lastFailedSlot.value);
-    }
 }
 
 function goToDateTimePicker(slot: Slot): void {
@@ -160,19 +171,10 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
         <div
             v-if="errorMessage"
             role="alert"
-            class="mb-4 flex items-center justify-between gap-3 rounded-md border border-error bg-surface px-4 py-3 text-body-sm text-error"
+            class="mb-4 flex items-center gap-2 rounded-md border border-error bg-surface px-4 py-3 text-body-sm text-error"
         >
-            <span class="flex items-center gap-2">
-                <span aria-hidden="true">⚠️</span>
-                <span>{{ errorMessage }}</span>
-            </span>
-            <button
-                type="button"
-                class="shrink-0 rounded-xl bg-primary px-3 py-2 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
-                @click="retryLastFailedRecord"
-            >
-                {{ t('record.retry') }}
-            </button>
+            <span aria-hidden="true">⚠️</span>
+            <span>{{ errorMessage }}</span>
         </div>
 
         <!-- グリッドは4列×2段固定（docs/wireframes.md S3） -->

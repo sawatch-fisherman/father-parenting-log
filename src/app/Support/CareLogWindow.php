@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Config;
  * `UpdateCareLogRequest`（M6）・`CareLogPolicy`（M6）・S10の日付ピッカー範囲・S13の
  * 「…」非活性判定（M6）は、個別に日付計算を書かずすべてこのクラスを参照する。
  *
+ * 例：今日が2026-08-21、`backdate_days=7`、現在時刻が23:50の場合
+ *   - `backdateFloor()`（実装）        → 2026-08-14 00:00（日付境界）
+ *   - `now()->subDays(7)`（NG・不採用） → 2026-08-14 23:50（2026-08-14のほぼ丸1日分が遡り不可になる）
+ *
  * @see docs/decisions.md §1.3「育児ログの遡り操作は直近7日に制限する」
  */
 final class CareLogWindow

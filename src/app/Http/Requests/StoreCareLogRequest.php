@@ -44,9 +44,10 @@ class StoreCareLogRequest extends FormRequest
             'care_action_id' => [
                 'required',
                 'integer',
-                // `Rule::exists()` のクロージャは `Illuminate\Database\Query\Builder` しか受け取れず
-                // `CareAction::scopeAccessibleTo()`（Eloquentスコープ）をそのまま呼べないため、
-                // 実在チェックそのものを`accessibleTo()`経由に置き換えて認可条件を1箇所に保つ。
+                // `Rule::exists()->where()` のクロージャは素の `Illuminate\Database\Query\Builder`
+                // しか受け取れず、`CareAction::scopeAccessibleTo()` を`->accessibleTo()`として
+                // 解決するEloquentの仕組みが働かないため、実在チェックをこの独自クロージャに
+                // 置き換え、認可条件（標準行 or 自分のカスタム行）をスコープ1箇所に保つ。
                 function (string $attribute, mixed $value, Closure $fail) use ($user): void {
                     if (! CareAction::query()->accessibleTo($user)->whereKey($value)->exists()) {
                         $fail(__('validation.exists', ['attribute' => __('validation.attributes.care_action_id')]));
