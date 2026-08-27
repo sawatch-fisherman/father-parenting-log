@@ -18,7 +18,7 @@ import { readonly, ref } from 'vue';
  * @see DESIGN.md 10章「Dialogs and Notifications」・11章「Success」
  */
 
-export interface Toast {
+interface Toast {
     // 同じ文言を続けて表示したとき（同じ育児行動を連続で記録した場合など）にも
     // <Transition> が「別のトースト」と認識できるよう、表示ごとに一意なキーを振る。
     id: number;
@@ -31,7 +31,7 @@ export interface Toast {
  * DESIGN.md 10章が「目安4秒以上／疲れた状態でも読み切れるように」と定めているため、
  * 下限の4秒ではなく5秒を採る。
  */
-export const TOAST_DURATION_MS = 5000;
+const TOAST_DURATION_MS = 5000;
 
 // 同時に複数は積まず、常に最新の1件だけを表示する（DESIGN.md 11章 Success「静かに数秒で消える」）。
 const current = ref<Toast | null>(null);
