@@ -259,18 +259,6 @@ class GoogleAuthenticationTest extends TestCase
     }
 
     /**
-     * 未認証で保護ルートへアクセスすると `login` へリダイレクトされることを検証する。
-     */
-    public function test_redirects_unauthenticated_access_to_login(): void
-    {
-        // Act
-        $response = $this->get('/');
-
-        // Assert
-        $response->assertRedirect(route('login'));
-    }
-
-    /**
      * 認証済みユーザーが `login` にアクセスすると `home` へリダイレクトされることを検証する（guest ミドルウェア）。
      */
     public function test_redirects_authenticated_user_away_from_login(): void

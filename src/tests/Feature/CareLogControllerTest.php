@@ -44,10 +44,13 @@ class CareLogControllerTest extends TestCase
         ]);
         $careAction = CareAction::factory()->create();
 
+        // 送信と検証で `now()` を2回評価すると、その間に秒が繰り上がったときだけ落ちるため固定する。
+        $occurredAt = now()->subDay()->format('Y-m-d H:i:s');
+
         // Act
         $response = $this->actingAs($user)->post('/care-logs', [
             'care_action_id' => $careAction->id,
-            'occurred_at' => now()->subDay()->format('Y-m-d H:i:s'),
+            'occurred_at' => $occurredAt,
             'memo' => 'よく寝た',
         ]);
 
@@ -56,7 +59,7 @@ class CareLogControllerTest extends TestCase
         $this->assertDatabaseHas('care_logs', [
             'user_id' => $user->id,
             'care_action_id' => $careAction->id,
-            'occurred_at' => now()->subDay()->format('Y-m-d H:i:s'),
+            'occurred_at' => $occurredAt,
             'age_group' => AgeGroup::Thirties->value,
             'child_age_group' => ChildAgeGroup::One->value,
             'memo' => 'よく寝た',

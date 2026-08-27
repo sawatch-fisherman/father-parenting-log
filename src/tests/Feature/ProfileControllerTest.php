@@ -175,38 +175,6 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * プロフィール未登録ユーザーが `/`（S3の暫定プレースホルダ）へ直接アクセスすると
-     * `profile.register` へリダイレクトされることを検証する（`EnsureProfileIsComplete`）。
-     */
-    public function test_a_user_without_a_profile_is_redirected_to_registration_from_home(): void
-    {
-        // Arrange
-        $user = User::factory()->create();
-
-        // Act
-        $response = $this->actingAs($user)->get('/');
-
-        // Assert
-        $response->assertRedirect(route('profile.register'));
-    }
-
-    /**
-     * プロフィール登録済みユーザーは `/` へアクセスできることを検証する。
-     */
-    public function test_a_user_with_a_profile_can_access_home(): void
-    {
-        // Arrange
-        $user = User::factory()->create();
-        Profile::factory()->create(['user_id' => $user->id]);
-
-        // Act
-        $response = $this->actingAs($user)->get('/');
-
-        // Assert
-        $response->assertOk();
-    }
-
-    /**
      * プロフィール未登録ユーザーは `/settings/profile` へ直接アクセスしても
      * `profile.register` へリダイレクトされることを検証する。
      */
@@ -446,7 +414,7 @@ class ProfileControllerTest extends TestCase
     /**
      * 未認証で `POST /profile` へアクセスすると `login` へリダイレクトされることを検証する。
      *
-     * `GET /` については `GoogleAuthenticationTest` で確認済みの `auth` ミドルウェアの効果を、
+     * ページGET系については `GlobalNavigationTest` で確認済みの `auth` ミドルウェアの効果を、
      * プロフィール登録のアクション系ルートでも代表して固定する。
      */
     public function test_unauthenticated_access_to_profile_store_redirects_to_login(): void
