@@ -75,8 +75,8 @@ function recordNow(slot: Slot): void {
                 // `occurred_at`重複エラーは、クライアント側の`submitting`ガード（このタイル自身が
                 // 送信中はdisableされる）をすり抜けた二重送信（別タブでの同時タップ等）でしか
                 // 起こらない。その場合、片方のリクエストは既に成功して記録が完了しているため、
-                // 利用者から見れば何も失敗していない。エラーとして出すと「もう一度試す」を誘発し、
-                // 実際に押されると新しい`occurred_at`で本物の重複記録を作ってしまうため、
+                // 利用者から見れば何も失敗していない。エラーとして出すと利用者が同じタイルを
+                // 再タップしてしまい、新しい`occurred_at`で本物の重複記録を作ってしまうため、
                 // エラーではなく通常の成功トーストとして扱う（お互いの意図は達成されている）。
                 if (message === t('validation.care_log_occurred_at_duplicate')) {
                     show(t('care_logs.recorded', { name: slot.name ?? '' }));
