@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 /**
  * S10（実施日時指定画面）の表示と、S3短タップ／S10保存を兼ねる育児ログ登録処理を担当する。
@@ -81,7 +82,17 @@ class CareLogController extends Controller
         // に永続化されない専用チャンネル（`page.flash`）に乗るため、この用途に正しく対応する。
         Inertia::flash('success', __('care_logs.recorded', ['name' => $request->careAction()->name]));
 
-        $grantedTitles = $this->titleGrantService->grant($user, $careLog);
+        // 育児ログの保存を称号付与より優先する（叱責ではなく振り返り。docs/concept.md）。
+        // `care_logs`は既にCOMMIT済みのため、ここで想定外の例外が起きても記録自体は失われて
+        // 良くない：記録済みなのに500が返るとユーザーは記録が失敗したと誤解して再タップしうる。
+        // Count・Streakは都度計算（専用の集計テーブルを持たない）なので、この回で称号を
+        // 取りこぼしても次回の記録時に同じしきい値へ再度到達した時点で自然に再判定される。
+        try {
+            $grantedTitles = $this->titleGrantService->grant($user, $careLog);
+        } catch (Throwable $exception) {
+            report($exception);
+            $grantedTitles = [];
+        }
 
         if ($grantedTitles !== []) {
             Inertia::flash('titles', $grantedTitles);

@@ -282,6 +282,47 @@ class TitleGrantTest extends TestCase
     }
 
     /**
+     * 1回の記録で全体合計と育児行動別の両方のCountしきい値を同時に跨いだ場合、
+     * 両方の称号が付与され、レスポンスの`titles`配列が`sort_order`順（全体→育児行動別）で
+     * 並ぶことを検証する。
+     *
+     * `TitleGrantService::grant()`の`orderBy('sort_order')`（候補称号の取得順）と
+     * `Record/Index.vue`のキュー処理は、いずれも複数同時獲得時の提示順を守るためだけに
+     * 存在する。1件ずつしか称号を獲得しないテストではこの並び順が壊れても検知できないため、
+     * 同時獲得のケースを別途固定する（docs/decisions.md §1.3「称号の提示順」）。
+     */
+    public function test_multiple_titles_granted_at_once_are_ordered_by_sort_order(): void
+    {
+        // Arrange: おむつ交換49件＋お風呂50件（計99件）で、全体合計・おむつ交換別Countとも
+        // 銅（それぞれ100件・50件）まであと1件の状態を用意する
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        CareLog::factory()
+            ->count(49)
+            ->sequence(fn ($sequence) => ['occurred_at' => now()->copy()->subDays(60 + $sequence->index)])
+            ->create(['user_id' => $user->id, 'care_action_id' => CareActionId::DIAPER_CHANGE]);
+        CareLog::factory()
+            ->count(50)
+            ->sequence(fn ($sequence) => ['occurred_at' => now()->copy()->subDays(160 + $sequence->index)])
+            ->create(['user_id' => $user->id, 'care_action_id' => CareActionId::BATH]);
+
+        // Act: 100件目（＝おむつ交換としては50件目）を記録し、両方のしきい値を同時に跨ぐ
+        $response = $this->actingAs($user)->post('/care-logs', [
+            'care_action_id' => CareActionId::DIAPER_CHANGE,
+            'occurred_at' => now()->format('Y-m-d H:i:s'),
+        ]);
+
+        // Assert: 全体合計（sort_order=1）が育児行動別（sort_order=7）より先に並ぶ
+        $response->assertInertiaFlash('titles', [
+            ['name' => '育児見習い', 'achievement_text' => '累計育児ログ：100回。'],
+            ['name' => 'おむつ交換見習い', 'achievement_text' => '累計おむつ交換：50回。'],
+        ]);
+        $this->assertDatabaseHas('user_titles', ['user_id' => $user->id, 'title_id' => TitleId::OVERALL_COUNT_TIER1]);
+        $this->assertDatabaseHas('user_titles', ['user_id' => $user->id, 'title_id' => TitleId::DIAPER_CHANGE_COUNT_TIER1]);
+    }
+
+    /**
      * 称号の対象範囲外（別の育児行動）の記録は、育児行動別Countのしきい値判定に
      * 算入されないことを検証する。
      */

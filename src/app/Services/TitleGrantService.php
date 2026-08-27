@@ -7,6 +7,7 @@ use App\Models\CareLog;
 use App\Models\Title;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 
 /**
@@ -17,13 +18,26 @@ use Illuminate\Support\Collection;
  * `lang/ja/titles.php`から現在のロケール向けに組み立てて返す（X投稿文＝S6のサーバー往復なしの原則を
  * 保つため。`CareLogController@store`のレスポンスに乗るだけで追加リクエストは発生しない）。
  *
+ * **`care_logs`の保存とはトランザクションを束ねない**：`care_logs`は`CareLogController@store`で
+ * 既にCOMMIT済みの状態でこのサービスが呼ばれる。「記録の保存」を「称号の付与」より優先する
+ * プロダクト方針（叱責ではなく振り返り。docs/concept.md）に基づき、称号付与側の失敗が
+ * 育児ログの保存を巻き戻す・失敗させることは意図的に避ける（呼び出し側の
+ * `CareLogController@store`で予期しない例外を握りつぶしてログに残す設計とセットで機能する）。
+ * 同時リクエストによる`UNIQUE(user_id, title_id)`違反（真の競合。下記`grant()`参照）だけは
+ * このサービス内で個別に吸収し、他の称号の付与判定は継続する。
+ *
  * @see docs/implementation-plan.md「M5 称号（S5, S6）」
  * @see docs/decisions.md §1.3「X投稿文（S6）の達成内容の一文は、サーバー側で組み立てて返す」
+ * @see review-results/pr-11-review.md Medium「称号付与の途中失敗時に、記録は保存済みなのに500になる」
  */
 class TitleGrantService
 {
     /**
      * 保存済みの育児ログを起点に称号を判定し、新規獲得分を`user_titles`へ確定する。
+     *
+     * 同じスコープ（`care_action_id`の有無）に属する称号は達成値（累計回数・連続日数）が
+     * 共通のため、候補称号1件ごとに集計クエリを打ち直さずスコープ単位でメモ化する
+     * （最大4スコープ＝全体Count・全体Streak・育児行動別Count・育児行動別Streak）。
      *
      * @return list<array{name: string, achievement_text: string}>
      */
@@ -38,19 +52,42 @@ class TitleGrantService
             ->orderBy('sort_order')
             ->get();
 
+        $anchorDate = $careLog->occurred_at->copy()->startOfDay();
+
+        /** @var array<int|string, int> $countByScope */
+        $countByScope = [];
+        /** @var array<int|string, int> $streakByScope */
+        $streakByScope = [];
+
         $granted = [];
 
         foreach ($candidates as $title) {
-            $achievedValue = $this->achievedValue($user, $title, $careLog);
+            // `care_action_id`（int|null）をそのまま配列キーにはできない（PHPはnullキーを
+            // 空文字列に丸めるため、他のスコープと衝突しうる）。'overall'で明示的に区別する。
+            $scopeKey = $title->care_action_id ?? 'overall';
+
+            $achievedValue = match ($title->condition_type) {
+                TitleConditionType::Count => $countByScope[$scopeKey] ??= $this->totalCount($user, $title->care_action_id),
+                TitleConditionType::Streak => $streakByScope[$scopeKey] ??= $this->streakDays($user, $title->care_action_id, $anchorDate),
+            };
 
             if ($achievedValue < $title->condition_value) {
                 continue;
             }
 
-            $user->userTitles()->create([
-                'title_id' => $title->id,
-                'unlocked_at' => now(),
-            ]);
+            try {
+                $user->userTitles()->create([
+                    'title_id' => $title->id,
+                    'unlocked_at' => now(),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                // 事前の`whereDoesntHave`はあくまでチェック時点のスナップショットで、同一ユーザーの
+                // 別リクエストがほぼ同時に同じ称号のしきい値を跨いだ場合はすり抜けうる
+                // （`UNIQUE(user_id, title_id)`。0001_01_01_000008_create_user_titles_table.php）。
+                // 二重付与ではなく正常系（付与自体は競合先のリクエストで完結済み）として扱い、
+                // このリクエストのレスポンスには含めず、他の候補称号の判定は継続する。
+                continue;
+            }
 
             $granted[] = [
                 'name' => $title->name,
@@ -59,17 +96,6 @@ class TitleGrantService
         }
 
         return $granted;
-    }
-
-    /**
-     * 称号の条件種別に応じて、現時点の達成値（累計回数 または 起点日からの連続日数）を返す。
-     */
-    private function achievedValue(User $user, Title $title, CareLog $careLog): int
-    {
-        return match ($title->condition_type) {
-            TitleConditionType::Count => $this->totalCount($user, $title->care_action_id),
-            TitleConditionType::Streak => $this->streakDays($user, $title->care_action_id, $careLog->occurred_at->copy()->startOfDay()),
-        };
     }
 
     /**

@@ -36,9 +36,21 @@ watch(
     { immediate: true },
 );
 
-// エラーは既定ではインラインバナーで出す方針のため（DESIGN.md 11章 Error は
-// 「再試行導線を必ず添える」ことを要求する）、`flash.error` はここでは拾わない。
-// そのため現時点で出るトーストは成功だけで、色・アイコンは Success 固定にしてある。
+// サーバー通信を伴う本格的なエラーは既定どおりインラインバナーで出す方針のため（DESIGN.md 11章
+// Error は「再試行導線を必ず添える」ことを要求し、トーストには操作を載せない設計と両立しない）、
+// `flash.error` はここでは拾わない。ここで扱うErrorトーストは、クライアント側だけで完結する
+// 単純な失敗（`XShareModal`のクリップボードコピー失敗など）専用。
+
+const variantClass: Record<'success' | 'error', string> = {
+    success: 'bg-success',
+    error: 'bg-error',
+};
+
+// 状態を色だけで伝えない（DESIGN.md 12章）。アイコンも状態ごとに変える。
+const variantIcon: Record<'success' | 'error', string> = {
+    success: '✓',
+    error: '⚠️',
+};
 </script>
 
 <template>
@@ -46,7 +58,10 @@ watch(
         モバイル・デスクトップとも上段中央（DESIGN.md 10章）。操作した場所（S3のタイル群は
         コンテンツ領域の上部にある）の近くに出すため。トーストには操作を載せない設計なので、
         親指の届く下部に置く理由がなく、視認性だけを優先できる。
-        グローバルナビが z-10 なので、トーストは z-20 で必ず前面に出す。
+        グローバルナビが z-10、S5/S6等のモーダルが z-30 なので、トーストは常に最前面という
+        位置づけで z-40 にする（review-results/pr-11-review.md Medium「コピー完了トーストが
+        モーダルのオーバーレイの背面に描画される」。モーダル表示中の操作フィードバックも
+        隠れずに届く必要があるため）。
         領域自体はクリックを透過させ、背後のヘッダー・タイルの操作を妨げない。
 
         `md:left-55` はデスクトップの左端をサイドバーの右端（AppLayoutの `md:w-55`＝220px）に
@@ -60,7 +75,7 @@ watch(
     <div
         role="status"
         aria-live="polite"
-        class="pointer-events-none fixed inset-x-0 top-0 z-20 flex justify-center p-4 md:left-55 md:p-8"
+        class="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center p-4 md:left-55 md:p-8"
     >
         <!-- 「派手なアニメーションは付けず、静かに数秒で消える」（DESIGN.md 11章 Success）ため、
              画面上端から滑り込む向きのわずかなスライドとフェードのみに留める。
@@ -76,10 +91,11 @@ watch(
             <div
                 v-if="current"
                 :key="current.id"
-                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-success px-4 py-3 text-body-sm text-white shadow-level-2"
+                :class="variantClass[current.variant]"
+                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-white shadow-level-2"
             >
                 <!-- 状態を色だけで伝えない（DESIGN.md 12章）。アイコンと文言を必ず併記する -->
-                <span aria-hidden="true">✓</span>
+                <span aria-hidden="true">{{ variantIcon[current.variant] }}</span>
                 <span>{{ current.message }}</span>
             </div>
         </Transition>

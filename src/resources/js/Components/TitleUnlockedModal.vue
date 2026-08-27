@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // 称号獲得モーダル（S5）。育児ログ登録の結果として自動表示される（ユーザー操作による遷移ではない。
 // docs/screens.md）。「Xに投稿」でS6（XShareModal）へ、「閉じる」でS3に戻る（docs/wireframes.md S5）。
+import { ref } from 'vue';
+import { useModalFocus } from '@/composables/useModalFocus';
 import { useTrans } from '@/composables/useTrans';
 
 defineProps<{
@@ -13,16 +15,21 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useTrans();
+
+const dialogRef = ref<HTMLElement | null>(null);
+useModalFocus(dialogRef, () => emit('close'));
 </script>
 
 <template>
     <!-- DESIGN.md 10章：オーバーレイrgba(51,48,44,0.5)＋中央配置。コンテンツは角丸16px・Level 2の影・bg-surface -->
     <div class="fixed inset-0 z-30 flex items-center justify-center bg-overlay p-4">
         <div
+            ref="dialogRef"
             role="dialog"
             aria-modal="true"
             aria-labelledby="title-unlocked-heading"
-            class="w-full max-w-sm rounded-2xl bg-surface p-6 text-center shadow-level-2"
+            tabindex="-1"
+            class="w-full max-w-sm rounded-2xl bg-surface p-6 text-center shadow-level-2 focus:outline-none"
         >
             <!-- DESIGN.md 10章：称号解除モーダルはAccentカラー（#D97757）を使った祝福演出にする -->
             <span class="text-display" aria-hidden="true">🏅</span>

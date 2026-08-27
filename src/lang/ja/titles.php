@@ -6,6 +6,7 @@ return [
     'close' => '閉じる',
     'copy' => 'コピー',
     'copied' => 'コピーしました',
+    'copy_failed' => 'コピーできませんでした。上の文章を選択してコピーしてください。',
     'open_x' => 'Xを開く',
     'share_tagline' => '父親育児、今日も運用中。',
     'share_hashtags' => '#TotoOps #父親育児',

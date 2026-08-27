@@ -3,7 +3,8 @@
 // 絵文字・称号名・ハッシュタグ等の固定レイアウトはクライアント側で組み立て、`achievementText`
 // （称号ごとに異なる達成内容の一文）だけをサーバーから受け取った値のまま埋め込む
 // （docs/decisions.md §1.3。追加のサーバー往復は発生しない）。
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useModalFocus } from '@/composables/useModalFocus';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
 
@@ -19,6 +20,9 @@ const emit = defineEmits<{
 const { t } = useTrans();
 const { show } = useToast();
 
+const dialogRef = ref<HTMLElement | null>(null);
+useModalFocus(dialogRef, () => emit('close'));
+
 const shareText = computed(() =>
     [
         `🏅${t('titles.unlocked')}`,
@@ -30,23 +34,35 @@ const shareText = computed(() =>
     ].join('\n'),
 );
 
-const xIntentUrl = computed(() => `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText.value)}`);
+const xIntentUrl = computed(() => `https://x.com/intent/post?text=${encodeURIComponent(shareText.value)}`);
 
 function copyShareText(): void {
+    // Clipboard APIはセキュアコンテキスト（HTTPS・localhost）でのみ公開されるため、
+    // `http://<LAN内IP>` のような非セキュアな接続では`navigator.clipboard`自体が`undefined`になり、
+    // 存在確認なしで`.writeText`にアクセスすると同期的にTypeErrorが発生する（`.catch`では拾えない）。
+    // 失敗時は無反応にせず、上の投稿文を手動選択してコピーする代替手段をトーストで案内する
+    // （review-results/pr-11-review.md Medium「clipboard未提供環境で同期例外・失敗時のフィードバックがない」）。
+    if (!navigator.clipboard) {
+        show(t('titles.copy_failed'), 'error');
+        return;
+    }
+
     navigator.clipboard
         .writeText(shareText.value)
         .then(() => show(t('titles.copied')))
-        .catch(() => {});
+        .catch(() => show(t('titles.copy_failed'), 'error'));
 }
 </script>
 
 <template>
     <div class="fixed inset-0 z-30 flex items-center justify-center bg-overlay p-4">
         <div
+            ref="dialogRef"
             role="dialog"
             aria-modal="true"
             aria-labelledby="x-share-heading"
-            class="w-full max-w-sm rounded-2xl bg-surface p-6 text-center shadow-level-2"
+            tabindex="-1"
+            class="w-full max-w-sm rounded-2xl bg-surface p-6 text-center shadow-level-2 focus:outline-none"
         >
             <h2 id="x-share-heading" class="text-heading-m font-semibold text-text-primary">
                 <span aria-hidden="true">🏅</span>
