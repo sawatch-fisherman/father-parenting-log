@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\GoogleSocialiteController;
+use App\Http\Controllers\CareActionController;
+use App\Http\Controllers\CareLogController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordController;
@@ -26,6 +28,10 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(EnsureProfileIsComplete::class)->group(function () {
         Route::get('/', [RecordController::class, 'index'])->name('home');
+
+        Route::get('/care-actions/other', [CareActionController::class, 'other'])->name('care-actions.other');
+        Route::get('/care-logs/create', [CareLogController::class, 'create'])->name('care-logs.create');
+        Route::post('/care-logs', [CareLogController::class, 'store'])->name('care-logs.store');
 
         Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
         Route::patch('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');

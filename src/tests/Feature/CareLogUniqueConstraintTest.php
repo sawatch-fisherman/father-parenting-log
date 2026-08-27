@@ -18,8 +18,7 @@ class CareLogUniqueConstraintTest extends TestCase
      *
      * クライアント側の送信ボタンdisableが間に合わなかった連打を、このUNIQUE制約が
      * セーフティネットとして防ぐ（docs/decisions.md §1.3）。`occurred_at` は秒精度で
-     * 保存されるため、サブ秒しか違わない連打も同一秒に丸められてここで弾かれる
-     * （切り捨て自体の検証は CareLogOccurredAtPrecisionTest）。
+     * 保存されるため、サブ秒しか違わない連打も同一秒に丸められてここで弾かれる。
      */
     public function test_duplicate_user_action_and_occurred_at_is_rejected(): void
     {

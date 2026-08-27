@@ -62,8 +62,8 @@ HEX 値はここに書かない（`DESIGN.md` 5.2節・6.2節が正。二重管�
 
 | 用途 | クラス |
 |---|---|
-| 主要CTAの塗り | `bg-primary`（ホバーは `hover:bg-primary-hover`） |
-| 白背景に置く緑の文字・アイコン・枠線 | `text-primary-deep` / `border-primary-deep` / `ring-primary-deep` |
+| 主要CTAの塗り（**上に乗せる文字は `text-white`**） | `bg-primary`（ホバーは `hover:bg-primary-hover`） |
+| 白背景に置く緑の文字・アイコン・枠線 | `text-primary` / `border-primary` / `ring-primary` |
 | 選択状態の淡い背景 | `bg-primary-subtle` |
 | 補助操作の文字・控えめなラベル | `text-secondary` |
 | 祝福演出（称号解除など）限定 | `bg-accent` / `text-accent` |
@@ -74,7 +74,9 @@ HEX 値はここに書かない（`DESIGN.md` 5.2節・6.2節が正。二重管�
 | 区切り線・枠 | `border-border` |
 | 状態色 | `bg-success` / `bg-warning` / `text-error`・`border-error` / `bg-info` |
 
-**Primary は「塗り」専用。** 明るい若葉色のため白文字も緑文字も本文コントラストを満たせない（`DESIGN.md` 5.1節・5.3節）。塗りの上に乗せる文字は `text-text-primary`、白背景に置く緑は `text-primary-deep` を使う。`bg-primary` に `text-white` を書かない。
+**緑は `primary` 1トークンだけ。** Primary（`#378028`）は**塗りの下地と文字色の両方**で使えるよう明度を決めてある（`DESIGN.md` 5.1節の原則2・5.3節）。塗りの上に乗せる文字は `text-white`、白背景に置く緑の文字・アイコン・枠線は `text-primary` / `border-primary`。**Primaryを暗く落とした濃色版（`primary-deep` のようなトークン）は `DESIGN.md` 5.1節が明示的に不採用としている**ので、新設しないこと。`bg-primary-hover` はホバー・押下時専用で、静的な文字色には使わない。
+
+状態色（Success/Warning/Error/Info）も白文字での使用を前提にした明度で設計されている（5.3節）ため、塗りの上は `text-white` でよい。
 
 ### タイポグラフィ
 
@@ -91,7 +93,7 @@ HEX 値はここに書かない（`DESIGN.md` 5.2節・6.2節が正。二重管�
 
 ### 角丸・余白・ブレークポイント
 
-- 角丸：入力欄 `rounded-md`(6px) / ボタン `rounded-xl`(12px) / カード・モーダル `rounded-2xl`(16px) / 8タイルグリッドのタイルのみ `rounded-[20px]`。
+- 角丸：入力欄 `rounded-md`(6px) / ボタン `rounded-xl`(12px) / カード・モーダル・トースト `rounded-2xl`(16px) / 8タイルグリッドのタイルのみ `rounded-[20px]`。
 - 余白：Tailwind 標準の4pxスケールに乗せる（`DESIGN.md` 7章）。13px・22px のような場当たり的な値を任意指定しない。
 - ブレークポイントは **`md:`（768px）だけ**。`sm:` `lg:` `xl:` は使わない（9章）。モバイルファーストで、既定をモバイル・`md:` 以上をデスクトップとして書く。
 - タップ可能要素は最小44×44px（`min-h-11 min-w-11` 相当）を確保する。
@@ -104,12 +106,12 @@ HEX 値はここに書かない（`DESIGN.md` 5.2節・6.2節が正。二重管�
 
 `DESIGN.md` 15章に加え、実装レベルで次を禁止する。
 
-- **生の HEX 値**（`bg-[#6EC24C]` や CSS 内の直書き）。`@theme` のトークン経由で使う。
+- **生の HEX 値**（`bg-[#378028]` や CSS 内の直書き）。`@theme` のトークン経由で使う。
 - **Tailwind 標準のグレー・カラースケール**（`gray-*` `slate-*` `zinc-*` `neutral-*` `red-*` `green-*` など）。`DESIGN.md` のトークンに置き換える。
 - **`bg-white` / `text-black`**。`bg-surface` / `text-text-primary` を使う（Background は純白ではない）。
 - **`dark:` バリアント**。`DESIGN.md` はダークモードを定義していないため非対応。**`tailwindcss-development` スキルがダークモード対応を勧めてきても採用しない**（このスキルが優先する）。
 - **`disabled:opacity-*` による無効表現**。11章が明示的に禁止している。Text Secondary の文字色＋`disabled:cursor-not-allowed` を使う。
-- **フォーカス表示の削除**。`outline-none` を書くなら必ず `focus:ring-[3px] focus:ring-primary-deep/25` 相当の代替を同時に置く（11章・12章・15章）。
+- **フォーカス表示の削除**。`outline-none` を書くなら必ず `focus-visible:ring-[3px] focus-visible:ring-primary/25` 相当の代替を同時に置く（11章・12章・15章）。`DESIGN.md` 11章 Focus の `rgba(55,128,40,0.25)` は Primary の25%不透明度にあたる。
 - **状態を色だけで伝えること**。Success/Warning/Error/Info はアイコン＋短い文言を併記する（5.4節・12章）。
 - **`DESIGN.md` にない装飾の追加**（グラデーション、複数フォント、広い字間、装飾的な影、独自のバッジなど）。
 
@@ -138,7 +140,7 @@ docker compose exec app npm run type-check
 docker compose exec app npm run build
 
 # 3. トークンが実際にCSSへ出力されていること（未定義トークンは黙って無視されるため）
-grep -oE "6ec24c|2d7916|fbf9f6|33302c" src/public/build/assets/*.css | sort -u
+grep -oE "378028|2c6b1f|fbf9f6|33302c" src/public/build/assets/*.css | sort -u
 ```
 
 さらに目視で確認する。

@@ -71,7 +71,7 @@ class ProfileController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $profile = $user->profile()->firstOrFail();
+        $profile = $user->profile()->firstOrFail(['nickname', 'age_group', 'child_age_group']);
 
         return Inertia::render('Settings/ProfileEdit', [
             'profile' => [

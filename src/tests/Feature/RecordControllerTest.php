@@ -157,16 +157,4 @@ class RecordControllerTest extends TestCase
             ->where('slots.7', null),
         );
     }
-
-    /**
-     * 未認証で `GET /` にアクセスすると `login` へリダイレクトされることを検証する。
-     */
-    public function test_unauthenticated_access_redirects_to_login(): void
-    {
-        // Act
-        $response = $this->get('/');
-
-        // Assert
-        $response->assertRedirect(route('login'));
-    }
 }

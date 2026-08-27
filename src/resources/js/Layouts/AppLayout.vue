@@ -6,6 +6,7 @@
 // （Bladeの@extends/@sectionと違い、ナビ自体は毎回作り直されない）。
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import ToastHost from '@/Components/ToastHost.vue';
 import { useTrans } from '@/composables/useTrans';
 
 type NavKey = 'record' | 'history' | 'stats' | 'settings';
@@ -74,5 +75,9 @@ const focusRingClass = 'focus-visible:outline-none focus-visible:ring-[3px] focu
                 {{ item.label }}
             </Link>
         </nav>
+
+        <!-- 保存成功などのフィードバック（DESIGN.md 10章）。永続レイアウトであるここに1つだけ置くことで、
+             S10・S4 のような単機能画面から S3 へリダイレクトして戻る経路も同じ枠で拾える -->
+        <ToastHost />
     </div>
 </template>

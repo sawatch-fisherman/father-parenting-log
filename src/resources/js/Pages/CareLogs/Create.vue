@@ -1,0 +1,159 @@
+<script setup lang="ts">
+// Inertia::render('CareLogs/Create')（CareLogController@create）が読み込むS10のページ。
+// S3の長押し、またはS4の項目タップから遷移する（docs/wireframes.md S10）。
+// 単機能画面のためグローバルナビは表示しない（AppLayout未使用）。
+import { Link, useForm } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
+import { useTrans } from '@/composables/useTrans';
+
+interface CareAction {
+    id: number;
+    name: string;
+}
+
+const props = defineProps<{
+    careAction: CareAction;
+    // 「7日前〜今日」（docs/decisions.md §1.3）。YYYY-MM-DD形式。
+    backdateFloorDate: string;
+    todayDate: string;
+    // `care_logs.date_help`の`:days`プレースホルダに渡す遡り可能日数（`config('totoops.care_log.backdate_days')`）。
+    backdateDays: number;
+}>();
+
+const { t } = useTrans();
+const { inputClass, labelClass, errorClass } = useFormFieldClasses();
+
+function pad(value: number): string {
+    return String(value).padStart(2, '0');
+}
+
+// `maxTime`（実施時刻の上限）が「開いた瞬間の現在時刻」に固定されないよう、基準時刻をrefにして
+// 一定間隔で更新する。S10を開いたまま数分放置しても、上限が古いままにならない。
+const now = ref(new Date());
+let nowTimer: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    nowTimer = setInterval(() => {
+        now.value = new Date();
+    }, 30_000);
+});
+
+onUnmounted(() => {
+    if (nowTimer) {
+        clearInterval(nowTimer);
+    }
+});
+
+// 実施日・実施時刻は個別の入力欄（<input type="date">/<input type="time">）を持つが、
+// サーバーへは結合済みの `occurred_at` として送る。`form.errors.occurred_at` を
+// そのまま使えるよう、`occurred_at` はここではローカルrefにせずuseFormのフィールドにする。
+const occurredDate = ref(props.todayDate);
+const occurredTime = ref(`${pad(now.value.getHours())}:${pad(now.value.getMinutes())}`);
+
+const form = useForm({
+    care_action_id: props.careAction.id,
+    occurred_at: '',
+    // 空欄（メモなし）は `StoreCareLogRequest::prepareForValidation()` がサーバー側でnullに正規化する。
+    memo: '',
+});
+
+// 実施日が「今日」の場合のみ、実施時刻の選択上限を「現在時刻＋5分」に制限する。
+// 過去日を選んだ場合は00:00〜23:59を自由に選べる（docs/wireframes.md S10）。
+// サーバー側でも同じ条件（`StoreCareLogRequest`）で弾くため、これは二重担保。
+const maxTime = computed<string | undefined>(() => {
+    if (occurredDate.value !== props.todayDate) {
+        return undefined;
+    }
+
+    const limit = new Date(now.value.getTime() + 5 * 60 * 1000);
+    const limitDate = `${limit.getFullYear()}-${pad(limit.getMonth() + 1)}-${pad(limit.getDate())}`;
+
+    // 現在時刻が23:55以降だと「現在時刻+5分」が翌日に繰り上がる。<input type="time">は
+    // `min`を指定しない限り`max`のラップアラウンドを解釈しないため、繰り上がった値
+    // （実質00:00〜00:04）をそのまま渡すと23:59までの時刻がすべて無効になってしまう。
+    // 日付が繰り上がる場合は上限を23:59にフォールバックする。
+    if (limitDate !== props.todayDate) {
+        return '23:59';
+    }
+
+    return `${pad(limit.getHours())}:${pad(limit.getMinutes())}`;
+});
+
+function submit(): void {
+    form.occurred_at = `${occurredDate.value} ${occurredTime.value}:00`;
+    form.post('/care-logs');
+}
+</script>
+
+<template>
+    <div class="flex min-h-screen flex-col bg-background text-text-primary">
+        <div class="px-4 pt-6">
+            <Link
+                href="/"
+                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+            >
+                {{ t('care_logs.back') }}
+            </Link>
+        </div>
+
+        <div class="flex flex-1 flex-col items-center px-4">
+            <form class="w-full max-w-sm space-y-6" @submit.prevent="submit">
+                <!-- ヘッダーには選択済みの育児行動名を表示のみ（docs/wireframes.md S10） -->
+                <h1 class="text-center text-heading-l font-bold">{{ careAction.name }}</h1>
+
+                <!-- `care_action_id`はS4のリンク経由の固定値で通常は入力欄を持たないが、
+                     万一サーバー側で無効と判定された場合に無反応にならないよう表示する -->
+                <p v-if="form.errors.care_action_id" :class="errorClass">{{ form.errors.care_action_id }}</p>
+
+                <div class="space-y-1">
+                    <label for="occurred_date" :class="labelClass">{{ t('care_logs.date_label') }}</label>
+                    <input
+                        id="occurred_date"
+                        v-model="occurredDate"
+                        type="date"
+                        required
+                        :min="backdateFloorDate"
+                        :max="todayDate"
+                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
+                    />
+                    <p class="text-body-sm text-text-secondary">{{ t('care_logs.date_help', { days: backdateDays }) }}</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label for="occurred_time" :class="labelClass">{{ t('care_logs.time_label') }}</label>
+                    <input
+                        id="occurred_time"
+                        v-model="occurredTime"
+                        type="time"
+                        required
+                        :max="maxTime"
+                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
+                    />
+                </div>
+
+                <p v-if="form.errors.occurred_at" :class="errorClass">{{ form.errors.occurred_at }}</p>
+
+                <div class="space-y-1">
+                    <label for="memo" :class="labelClass">{{ t('care_logs.memo_label') }}</label>
+                    <textarea
+                        id="memo"
+                        v-model="form.memo"
+                        maxlength="255"
+                        rows="3"
+                        :class="[inputClass, form.errors.memo ? 'border-error' : 'border-border']"
+                    ></textarea>
+                    <p v-if="form.errors.memo" :class="errorClass">{{ form.errors.memo }}</p>
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
+                    :disabled="form.processing"
+                >
+                    {{ t('care_logs.submit') }}
+                </button>
+            </form>
+        </div>
+    </div>
+</template>
