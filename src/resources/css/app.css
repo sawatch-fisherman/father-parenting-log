@@ -39,6 +39,10 @@
     --color-error: #b3435a;
     --color-info: #5d82a0;
 
+    /* 10章 Dialogs and Notifications（モーダルの半透明オーバーレイ。5.2の14トークンには含まれない
+       コンポーネント専用値だが、DESIGN.mdが具体値を明示しているためHEX直書きを避けトークン化する） */
+    --color-overlay: rgba(51, 48, 44, 0.5);
+
     /* 6.2 サイズ・行間（ウェイトはクラス側で font-semibold / font-bold を併用する） */
     --text-display: 28px;
     --text-display--line-height: 1.4;

@@ -2,8 +2,10 @@
 // Inertia::render('Record/Index')（RecordController@index）が読み込むS3のページコンポーネント。
 // 短タップ＝タップ時刻を`occurred_at`として即記録（POST /care-logs）、
 // 長押し＝実施日時指定画面（S10）へ遷移（docs/wireframes.md S3, docs/decisions.md §1.3）。
-import { Link, router } from '@inertiajs/vue3';
-import { onUnmounted, ref } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onUnmounted, ref, watch } from 'vue';
+import TitleUnlockedModal from '@/Components/TitleUnlockedModal.vue';
+import XShareModal from '@/Components/XShareModal.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
@@ -15,6 +17,11 @@ interface Slot {
     name: string | null;
 }
 
+interface GrantedTitle {
+    name: string;
+    achievementText: string;
+}
+
 defineProps<{
     // slot_position（1〜8）順の配列。行が無い位置はnull（空きスロット）。
     slots: (Slot | null)[];
@@ -22,6 +29,51 @@ defineProps<{
 
 const { t } = useTrans();
 const { show } = useToast();
+
+// S5（称号獲得モーダル）・S6（X投稿文生成モーダル）は`POST /care-logs`のレスポンス
+// （`page.flash.titles`）を受けて自動表示する（docs/screens.md）。1回の記録で複数の称号を
+// 同時獲得しうる（例：連続日数の複数段階を一度に達成）ため、キューで1件ずつ順番に見せる。
+const page = usePage();
+const titleQueue = ref<GrantedTitle[]>([]);
+const shareTarget = ref<GrantedTitle | null>(null);
+
+function isGrantedTitleArray(value: unknown): value is Array<{ name: unknown; achievement_text: unknown }> {
+    return Array.isArray(value);
+}
+
+watch(
+    () => page.flash,
+    (flash) => {
+        const titles = flash?.titles;
+        if (!isGrantedTitleArray(titles)) {
+            return;
+        }
+
+        for (const title of titles) {
+            if (typeof title.name === 'string' && typeof title.achievement_text === 'string') {
+                titleQueue.value.push({ name: title.name, achievementText: title.achievement_text });
+            }
+        }
+    },
+    { immediate: true },
+);
+
+const currentUnlocked = computed(() => titleQueue.value[0] ?? null);
+
+function closeUnlocked(): void {
+    titleQueue.value.shift();
+}
+
+function openShare(): void {
+    if (currentUnlocked.value) {
+        shareTarget.value = currentUnlocked.value;
+        titleQueue.value.shift();
+    }
+}
+
+function closeShare(): void {
+    shareTarget.value = null;
+}
 
 defineOptions({
     layout: [AppLayout, { active: 'record' }],
@@ -216,5 +268,19 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
                 {{ t('record.other') }}
             </Link>
         </div>
+
+        <!-- S5・S6はルートを持たないモーダル（S3上のUI状態）。同時に出すのは常に片方のみ（docs/screens.md） -->
+        <TitleUnlockedModal
+            v-if="currentUnlocked && !shareTarget"
+            :name="currentUnlocked.name"
+            @share="openShare"
+            @close="closeUnlocked"
+        />
+        <XShareModal
+            v-if="shareTarget"
+            :name="shareTarget.name"
+            :achievement-text="shareTarget.achievementText"
+            @close="closeShare"
+        />
     </div>
 </template>

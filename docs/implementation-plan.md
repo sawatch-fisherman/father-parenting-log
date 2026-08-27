@@ -161,14 +161,14 @@ flowchart TD
 - **依存**：M4
 - **対応画面/機能**：S5（称号獲得モーダル）・S6（X投稿文生成モーダル）／[features.md](features.md)「称号判定」「X投稿文生成」／[screens.md](screens.md)（ルートを持たないモーダル）
 - **タスク**：
-  - [ ] `TitleGrantService`：`titles` を `condition_type` で分岐して判定（[decisions.md](decisions.md) §1.3）。対象範囲はいずれも `titles.care_action_id` で表現（NULL＝全育児行動、値あり＝その育児行動のみ）
+  - [x] `TitleGrantService`：`titles` を `condition_type` で分岐して判定（[decisions.md](decisions.md) §1.3）。対象範囲はいずれも `titles.care_action_id` で表現（NULL＝全育児行動、値あり＝その育児行動のみ）
     - **Count**：対象範囲の累計記録回数を `COUNT` し `condition_value` と比較
     - **Streak**：対象範囲で `care_logs.occurred_at` の DISTINCT な日付（JST暦日）を新しい順に取得し、**今回保存した育児ログの日付を起点に**連続日数を計算、`condition_value` と比較（専用テーブル・カラムは持たない都度計算）
     - いずれも新規達成のみ `user_titles` を作成（`UNIQUE(user_id, title_id)`）
     - **`achievement_text` をサーバー側で組み立てて返す**：`condition_type`／`care_action_id` の有無（Count育児行動別／Count全体／Streak育児行動別／Streak全体の4パターン）を `lang/ja`（将来 `lang/en`）の `__()` で分岐整形し、現在のロケール（`App::getLocale()`。M0のi18n基盤で既にリクエストごとに設定済み）で完成済みの一文（例：`"累計おむつ交換：100回。"`／`"7日連続育児ログ達成。"`）として返す。X投稿文の言語ごとの文言をVue側と二重管理しない、かつ「サーバー往復なし」の原則も壊さない（このデータは既存の`POST /care-logs`レスポンスに乗るだけで追加リクエストは発生しない）
-  - [ ] `CareLogController@store` から同期呼び出し、Inertia レスポンスに獲得称号（`name`・`achievement_text`）を含める
-  - [ ] Vue：`components/TitleUnlockedModal.vue`（S5）、`components/XShareModal.vue`（S6・**固定レイアウト部分（絵文字・称号名・ハッシュタグ）のみクライアント側で組み立て**、`achievement_text` はサーバーから受け取った値をそのまま埋め込む＋コピー＋Xを開くリンク。サーバー往復なし）
-  - [ ] `user_titles` は永久保持（`care_logs` 編集・削除で再判定・取り消しをしない。Streak も同様。[decisions.md](decisions.md) §1.3）
+  - [x] `CareLogController@store` から同期呼び出し、Inertia レスポンスに獲得称号（`name`・`achievement_text`）を含める
+  - [x] Vue：`components/TitleUnlockedModal.vue`（S5）、`components/XShareModal.vue`（S6・**固定レイアウト部分（絵文字・称号名・ハッシュタグ）のみクライアント側で組み立て**、`achievement_text` はサーバーから受け取った値をそのまま埋め込む＋コピー＋Xを開くリンク。サーバー往復なし）
+  - [x] `user_titles` は永久保持（`care_logs` 編集・削除で再判定・取り消しをしない。Streak も同様。[decisions.md](decisions.md) §1.3）
 - **テスト観点**：Count・Streak それぞれでしきい値到達時に付与、二重付与なし、レスポンスに獲得称号（`name`・`achievement_text`）が含まれる、4パターンそれぞれで `achievement_text` の文面が正しい、既取得は再付与しない、Streak は記録が1日途切れると連続日数がリセットされる、バックデート入力（S10）でも起点日から正しく連続日数を数える。
 - **完了条件**：DoD ＋ 記録→称号獲得（Count・Streak 双方）→X投稿文コピーの流れが動く。
 - **ブロッカー**：なし（称号名・等級・しきい値は確定済み。[decisions.md](decisions.md) §1.3「称号名・等級・しきい値の確定内容」）。

@@ -6,3 +6,11 @@ parameters:
         - app
 
     level: 8
+
+    # Laravel 11+のメソッド方式（`protected function casts(): array`）で定義したキャストを
+    # Larastanに解決させる。既定はfalseで、その場合`casts()`の戻り値型（`@return array<string, string>`
+    # のような汎用的な宣言）で判定されるため、Enumキャストのプロパティが実際のEnum型ではなく
+    # DBカラムの素の型（例：`condition_type`がtinyint unsigned）に解決されてしまう
+    # （`TitleGrantService`で判明。`database-schema`で実カラム型を確認済み。Larastan既定の
+    # プロパティ配列方式`$casts`では起きない）。
+    parseModelCastsMethod: true

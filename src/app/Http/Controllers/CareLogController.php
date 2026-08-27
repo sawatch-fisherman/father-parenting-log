@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCareLogRequest;
 use App\Models\CareAction;
 use App\Models\User;
+use App\Services\TitleGrantService;
 use App\Support\CareLogWindow;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,8 @@ use Inertia\Response;
  */
 class CareLogController extends Controller
 {
+    public function __construct(private readonly TitleGrantService $titleGrantService) {}
+
     /**
      * 実施日時指定画面（S10）を表示する。
      */
@@ -45,7 +48,8 @@ class CareLogController extends Controller
     /**
      * 育児ログを登録する（S3短タップ／S10保存の共通エンドポイント）。
      *
-     * 称号判定（M5）はこのスライスでは未実装のため行わず、常にS3（記録画面）へ戻す。
+     * 保存直後に`TitleGrantService`でCount・Streak両方式の称号を同期判定し、新規獲得分を
+     * レスポンスに含める（S5の称号獲得モーダルがVue側で自動表示する。docs/screens.md）。
      */
     public function store(StoreCareLogRequest $request): RedirectResponse
     {
@@ -54,7 +58,7 @@ class CareLogController extends Controller
         $profile = $user->profile()->firstOrFail(['age_group', 'child_age_group']);
 
         try {
-            $user->careLogs()->create([
+            $careLog = $user->careLogs()->create([
                 'care_action_id' => $request->validated('care_action_id'),
                 'occurred_at' => $request->validated('occurred_at') ?? now(),
                 'age_group' => $profile->age_group,
@@ -76,6 +80,12 @@ class CareLogController extends Controller
         // ページに古いメッセージが乗ったまま再表示されてしまう。`Inertia::flash()`はhistory state
         // に永続化されない専用チャンネル（`page.flash`）に乗るため、この用途に正しく対応する。
         Inertia::flash('success', __('care_logs.recorded', ['name' => $request->careAction()->name]));
+
+        $grantedTitles = $this->titleGrantService->grant($user, $careLog);
+
+        if ($grantedTitles !== []) {
+            Inertia::flash('titles', $grantedTitles);
+        }
 
         return redirect()->route('home');
     }
