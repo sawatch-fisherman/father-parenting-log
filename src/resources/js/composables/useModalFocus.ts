@@ -22,8 +22,13 @@ const FOCUSABLE_SELECTOR =
  * @param onEscape Escapeキー押下時に呼ぶコールバック（通常は`close`イベントのemit）。
  *
  * @see review-results/pr-11-review.md Medium「モーダルにフォーカストラップ・Escape・初期フォーカスがない」
+ * @see review-results/pr-11-review-2.md Medium「Shift+Tabでフォーカストラップを抜ける」
+ * @see review-results/pr-11-review-2.md Low「モーダルを閉じたあとフォーカスが復帰しない」
  */
 export function useModalFocus(containerRef: Ref<HTMLElement | null>, onEscape: () => void): void {
+    // 開く前にフォーカスされていた要素（S3のタイル等）。閉じたときにここへ戻す。
+    let previouslyFocused: HTMLElement | null = null;
+
     function focusableElements(): HTMLElement[] {
         if (!containerRef.value) {
             return [];
@@ -49,20 +54,25 @@ export function useModalFocus(containerRef: Ref<HTMLElement | null>, onEscape: (
 
         const first = elements[0];
         const last = elements[elements.length - 1];
+        const active = document.activeElement;
 
-        // ダイアログ本体自体（`tabindex="-1"`）を含めて先頭・末尾を判定するため、
-        // `document.activeElement`をそのまま比較する（通常のTab巡回はブラウザ標準に任せ、
-        // 両端に達した時だけ折り返す）。
-        if (event.shiftKey && document.activeElement === first) {
+        // `focusableElements()`は`containerRef.value.querySelectorAll()`（子孫のみ）が対象のため、
+        // `tabindex="-1"`のダイアログ本体自身は含まれない。ところが初期フォーカスは
+        // `onMounted`でその本体に置かれるため、開いた直後の最初の1打鍵がShift+Tabだと
+        // `active`は`first`でも`last`でもなくなり、どちらの分岐にも一致しないまま
+        // ブラウザ標準の挙動で背景へフォーカスが漏れる。本体自身も「先頭」として扱うことで防ぐ。
+        if (event.shiftKey && (active === first || active === containerRef.value)) {
             event.preventDefault();
             last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
+        } else if (!event.shiftKey && active === last) {
             event.preventDefault();
             first.focus();
         }
     }
 
     onMounted(() => {
+        previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
         // S5は「育児ログ登録の結果として自動表示」（ユーザー操作による遷移ではない）ため、
         // フォーカスを移さないとキーボード・支援技術の利用者はモーダルの出現に気づけない
         // （docs/wireframes.md S5）。
@@ -72,5 +82,12 @@ export function useModalFocus(containerRef: Ref<HTMLElement | null>, onEscape: (
 
     onBeforeUnmount(() => {
         document.removeEventListener('keydown', handleKeydown);
+
+        // 記録直後の操作でタイル構成が変わっている等、退避先が既にDOMから外れている
+        // 場合は無視する（`isConnected`が`false`の要素に`focus()`しても無害だが、
+        // 意図が伝わりにくいため明示的に確認する）。
+        if (previouslyFocused?.isConnected) {
+            previouslyFocused.focus();
+        }
     });
 }
