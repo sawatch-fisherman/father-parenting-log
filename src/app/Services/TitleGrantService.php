@@ -58,6 +58,7 @@ class TitleGrantService
         $countByScope = [];
         /** @var array<int|string, int> $streakByScope */
         $streakByScope = [];
+        $streakLookbackDaysByScope = $this->streakLookbackDaysByScope($candidates);
 
         $granted = [];
 
@@ -68,7 +69,12 @@ class TitleGrantService
 
             $achievedValue = match ($title->condition_type) {
                 TitleConditionType::Count => $countByScope[$scopeKey] ??= $this->totalCount($user, $title->care_action_id),
-                TitleConditionType::Streak => $streakByScope[$scopeKey] ??= $this->streakDays($user, $title->care_action_id, $anchorDate),
+                TitleConditionType::Streak => $streakByScope[$scopeKey] ??= $this->streakDays(
+                    $user,
+                    $title->care_action_id,
+                    $anchorDate,
+                    $streakLookbackDaysByScope[$scopeKey],
+                ),
             };
 
             if ($achievedValue < $title->condition_value) {
@@ -109,18 +115,54 @@ class TitleGrantService
     }
 
     /**
+     * スコープ（`care_action_id`の有無）ごとに、Streak候補が要求する最大しきい値（日数）を求める。
+     *
+     * `streakDays()`が過去へ遡ってよい日数の上限として使う。`titles.sort_order`の採番規則
+     * （docs/data-model.md §⑥）により、同一スコープ内のStreak候補は等級の昇順（銅→銀→金＝
+     * しきい値の小さい順）で評価される。各候補の`condition_value`をそのまま範囲指定に使うと、
+     * 先に評価される小さいしきい値でメモ化された結果を後続の大きいしきい値の判定にも使い回して
+     * しまい判定漏れが起きるため、範囲はスコープ内の最大値に統一する。
+     *
+     * @param Collection<int, Title> $candidates
+     * @return array<int|string, int>
+     */
+    private function streakLookbackDaysByScope(Collection $candidates): array
+    {
+        $lookbackDaysByScope = [];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate->condition_type !== TitleConditionType::Streak) {
+                continue;
+            }
+
+            $scopeKey = $candidate->care_action_id ?? 'overall';
+            $lookbackDaysByScope[$scopeKey] = max($lookbackDaysByScope[$scopeKey] ?? 0, $candidate->condition_value);
+        }
+
+        return $lookbackDaysByScope;
+    }
+
+    /**
      * 対象範囲でのDISTINCTな記録日（JST暦日）を求め、`$anchorDate`を起点に過去へ向かって
      * 何日連続で記録があるかを数える。
      *
      * 「今回保存した育児ログの日付を起点に」連続日数を計算する仕様（docs/decisions.md §1.3）のため、
      * 起点日より新しい記録日があっても数えには含めない（バックデート入力が既存の連続記録の
      * 隙間を埋めた場合、起点日から見た連続日数のみを判定対象にする）。
+     *
+     * `$lookbackDays`より前の記録日は取得しない（`streakLookbackDaysByScope()`が求めた、
+     * 同一スコープ内のStreak候補が要求する最大しきい値）。`care_logs`は無制限に増え続ける
+     * ログテーブルのため、範囲を絞らないとユーザーの利用期間の長さに比例してこのクエリが
+     * 遅くなってしまう。
      */
-    private function streakDays(User $user, ?int $careActionId, Carbon $anchorDate): int
+    private function streakDays(User $user, ?int $careActionId, Carbon $anchorDate, int $lookbackDays): int
     {
+        $earliestDay = $anchorDate->copy()->subDays($lookbackDays - 1);
+
         /** @var Collection<int, string> $recordedDays */
         $recordedDays = $user->careLogs()
             ->when($careActionId !== null, fn ($query) => $query->where('care_action_id', $careActionId))
+            ->where('occurred_at', '>=', $earliestDay)
             ->selectRaw('DISTINCT DATE(occurred_at) as day')
             ->pluck('day');
 
