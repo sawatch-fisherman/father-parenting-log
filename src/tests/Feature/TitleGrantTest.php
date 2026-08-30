@@ -17,7 +17,7 @@ use Tests\TestCase;
  * `TitleGrantService`による称号の同期判定（Count・Streak両方式）を
  * `POST /care-logs`のレスポンス経由で検証する（M5）。
  *
- * @see docs/implementation-plan.md「M5 称号（S5, S6）― Count・Streak 両方式」
+ * @see docs/implementation-plan.md「M5 称号（S5）― Count・Streak 両方式」
  */
 class TitleGrantTest extends TestCase
 {

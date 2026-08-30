@@ -5,7 +5,6 @@
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import TitleUnlockedModal from '@/Components/TitleUnlockedModal.vue';
-import XShareModal from '@/Components/XShareModal.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
@@ -30,12 +29,11 @@ defineProps<{
 const { t } = useTrans();
 const { show } = useToast();
 
-// S5（称号獲得モーダル）・S6（X投稿文生成モーダル）は`POST /care-logs`のレスポンス
-// （`page.flash.titles`）を受けて自動表示する（docs/screens.md）。1回の記録で複数の称号を
-// 同時獲得しうる（例：連続日数の複数段階を一度に達成）ため、キューで1件ずつ順番に見せる。
+// S5（称号獲得モーダル）は`POST /care-logs`のレスポンス（`page.flash.titles`）を受けて
+// 自動表示する（docs/screens.md）。1回の記録で複数の称号を同時獲得しうる
+// （例：連続日数の複数段階を一度に達成）ため、キューで1件ずつ順番に見せる。
 const page = usePage();
 const titleQueue = ref<GrantedTitle[]>([]);
-const shareTarget = ref<GrantedTitle | null>(null);
 
 function isGrantedTitleArray(value: unknown): value is Array<{ name: unknown; achievement_text: unknown }> {
     return Array.isArray(value);
@@ -62,17 +60,6 @@ const currentUnlocked = computed(() => titleQueue.value[0] ?? null);
 
 function closeUnlocked(): void {
     titleQueue.value.shift();
-}
-
-function openShare(): void {
-    if (currentUnlocked.value) {
-        shareTarget.value = currentUnlocked.value;
-        titleQueue.value.shift();
-    }
-}
-
-function closeShare(): void {
-    shareTarget.value = null;
 }
 
 defineOptions({
@@ -269,18 +256,12 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
             </Link>
         </div>
 
-        <!-- S5・S6はルートを持たないモーダル（S3上のUI状態）。同時に出すのは常に片方のみ（docs/screens.md） -->
+        <!-- S5はルートを持たないモーダル（S3上のUI状態。docs/screens.md） -->
         <TitleUnlockedModal
-            v-if="currentUnlocked && !shareTarget"
+            v-if="currentUnlocked"
             :name="currentUnlocked.name"
-            @share="openShare"
+            :achievement-text="currentUnlocked.achievementText"
             @close="closeUnlocked"
-        />
-        <XShareModal
-            v-if="shareTarget"
-            :name="shareTarget.name"
-            :achievement-text="shareTarget.achievementText"
-            @close="closeShare"
         />
     </div>
 </template>

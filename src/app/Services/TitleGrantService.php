@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
  *
  * 対象範囲はいずれも`titles.care_action_id`で表現する（NULL＝全育児行動、値あり＝その育児行動のみ）。
  * 新規達成のみ`user_titles`を作成し（`UNIQUE(user_id, title_id)`）、`achievement_text`はここで
- * `lang/ja/titles.php`から現在のロケール向けに組み立てて返す（X投稿文＝S6のサーバー往復なしの原則を
+ * `lang/ja/titles.php`から現在のロケール向けに組み立てて返す（X投稿文＝S5のサーバー往復なしの原則を
  * 保つため。`CareLogController@store`のレスポンスに乗るだけで追加リクエストは発生しない）。
  *
  * **`care_logs`の保存とはトランザクションを束ねない**：`care_logs`は`CareLogController@store`で
@@ -26,8 +26,8 @@ use Illuminate\Support\Collection;
  * 同時リクエストによる`UNIQUE(user_id, title_id)`違反（真の競合。下記`grant()`参照）だけは
  * このサービス内で個別に吸収し、他の称号の付与判定は継続する。
  *
- * @see docs/implementation-plan.md「M5 称号（S5, S6）」
- * @see docs/decisions.md §1.3「X投稿文（S6）の達成内容の一文は、サーバー側で組み立てて返す」
+ * @see docs/implementation-plan.md「M5 称号（S5）」
+ * @see docs/decisions.md §1.3「X投稿文（S5）の達成内容の一文は、サーバー側で組み立てて返す」
  * @see review-results/pr-11-review.md Medium「称号付与の途中失敗時に、記録は保存済みなのに500になる」
  */
 class TitleGrantService
@@ -123,7 +123,7 @@ class TitleGrantService
      * 先に評価される小さいしきい値でメモ化された結果を後続の大きいしきい値の判定にも使い回して
      * しまい判定漏れが起きるため、範囲はスコープ内の最大値に統一する。
      *
-     * @param Collection<int, Title> $candidates
+     * @param  Collection<int, Title>  $candidates
      * @return array<int|string, int>
      */
     private function streakLookbackDaysByScope(Collection $candidates): array
