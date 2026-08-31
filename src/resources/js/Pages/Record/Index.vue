@@ -76,8 +76,7 @@ const submitting = ref(false);
 //
 // 「もう一度試す」ボタンは置かない：このエラーが起こりうる原因（未来日時・無効なcare_action_id）は
 // いずれも同じ内容を再送しても直らない（端末時計は変わらない・IDは変わらない）ため、押しても
-// 直らないボタンを出すと誤解を招く。本物の通信障害（ネットワーク切断等）へのリトライ導線は
-// 別途対応する（review-results/pr-10-review-2.mdのMedium「通信エラー」は本ラウンドでは対象外）。
+// 直らないボタンを出すと誤解を招く。本物の通信障害（ネットワーク切断等）へのリトライ導線は別途対応する。
 const errorMessage = ref<string | null>(null);
 
 const LONG_PRESS_MS = 500;

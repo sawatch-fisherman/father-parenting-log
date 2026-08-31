@@ -20,10 +20,6 @@ const FOCUSABLE_SELECTOR =
  *   呼び出し側で`tabindex="-1"`を付けておくこと（Tabの通常巡回対象には含めず、
  *   マウント時の`focus()`だけで初期フォーカスを移すため）。
  * @param onEscape Escapeキー押下時に呼ぶコールバック（通常は`close`イベントのemit）。
- *
- * @see review-results/pr-11-review.md Medium「モーダルにフォーカストラップ・Escape・初期フォーカスがない」
- * @see review-results/pr-11-review-2.md Medium「Shift+Tabでフォーカストラップを抜ける」
- * @see review-results/pr-11-review-2.md Low「モーダルを閉じたあとフォーカスが復帰しない」
  */
 export function useModalFocus(containerRef: Ref<HTMLElement | null>, onEscape: () => void): void {
     // 開く前にフォーカスされていた要素（S3のタイル等）。閉じたときにここへ戻す。

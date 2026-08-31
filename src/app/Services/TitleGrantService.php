@@ -28,7 +28,6 @@ use Illuminate\Support\Collection;
  *
  * @see docs/implementation-plan.md「M5 称号（S5）」
  * @see docs/decisions.md §1.3「X投稿文（S5）の達成内容の一文は、サーバー側で組み立てて返す」
- * @see review-results/pr-11-review.md Medium「称号付与の途中失敗時に、記録は保存済みなのに500になる」
  */
 class TitleGrantService
 {

@@ -96,7 +96,7 @@ class CareLogControllerTest extends TestCase
      *
      * 通常のセッションフラッシュ（`->with()`）ではなく`Inertia::flash()`を使う理由は、
      * `page.props`と違いブラウザのhistory stateに永続化されないため（ブラウザバックで復元した
-     * ページに古い成功メッセージが再表示されるのを防ぐ。review-results/pr-10-review-2.md）。
+     * ページに古い成功メッセージが再表示されるのを防ぐため）。
      * S3短タップは記録しても画面が変わらないため、このフラッシュを AppLayout の `ToastHost` が
      * トーストとして出すまでが成功フィードバックの経路になる（DESIGN.md 11章 Success）。
      */
@@ -320,8 +320,7 @@ class CareLogControllerTest extends TestCase
      * 表示されることを検証する（理由は`test_occurred_at_before_the_backdate_floor_is_rejected`と同じ）。
      *
      * 文言には「端末の時刻設定をご確認ください」を含める。短タップは端末のローカル時計をそのまま
-     * 送信するため、端末TZがJST以外・時計がズレている場合にもこのエラーになりうる
-     * （review-results/pr-10-review-2.md）。
+     * 送信するため、端末TZがJST以外・時計がズレている場合にもこのエラーになりうる。
      */
     public function test_occurred_at_beyond_the_five_minute_future_buffer_is_rejected(): void
     {
