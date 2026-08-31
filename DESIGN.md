@@ -290,7 +290,7 @@ overflow-wrap: break-word;
 
 - **育児イベント種別アイコン（17種、8タイルグリッド用）**：絵文字ベースを採用する。`docs/wireframes.md` の称号解除モーダル（S5）で既に🏅絵文字が使われている前例に合わせ、追加のライセンス・デザイン工数なしで温かみのある表現ができるため。
   - **データソースは未確定**（`care_actions` テーブルには `id`／`user_id`／`name`／`sort_order` しか無く、絵文字を持たない）。`care_actions` に列を足すか、`App\Support\CareActionId` 定数からフロント側でマッピングするかは未決定。決着するまでは8タイルグリッド（S3/S9）はラベル（`name`）のみで表示する（M3で採用。[implementation-plan.md](docs/implementation-plan.md)「M3 記録の骨格＋グローバルナビ」）。
-- **UIクロム（ナビ・矢印・ケバブメニュー・チェックマーク等）**：Heroicons（MITライセンス）を採用する。Tailwind CSSエコシステムでの採用実績が多く、線幅・サイズの一貫性が保たれているため。
+- **UIクロム（ナビ・矢印・ケバブメニュー・チェックマーク等）**：Heroicons（MITライセンス）を採用する。Tailwind CSSエコシステムでの採用実績が多く、線幅・サイズの一貫性が保たれているため。**ただしMVP（M1〜M6実装分）では未導入**（`src/package.json` に `@heroicons/vue` を追加していない）で、`›`・`…`・`✓`・`ℹ️` 等のテキスト・絵文字文字で代替している（例：S13のケバブメニュー`src/resources/js/Pages/History/Index.vue`、S4のシェブロン`src/resources/js/Pages/CareActions/Other.vue`、トーストの`src/resources/js/Components/ToastHost.vue`）。Heroicons導入は後続タスクとする。導入する際は上記のテキスト表現をまとめて置き換える。
 - **写真・人物画像**：`docs/privacy.md` により子どもの写真は取得しないため、装飾目的の人物写真・ストックフォトは使用しない。イラストを使う場合も、特定の人種・体型・家族構成を暗示しない、抽象度の高い表現に留める。
 
 > この2点（絵文字＋Heroicons）はDESIGN.md作成時点での設計判断であり、`docs/decisions.md` に別途明記された既存の決定と矛盾しないか、実装着手前に確認が必要（16章参照）。

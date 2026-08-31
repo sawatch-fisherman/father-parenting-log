@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizesBlankMemo;
 use App\Http\Requests\Concerns\ValidatesOccurredAt;
 use App\Models\CareAction;
 use App\Models\User;
@@ -21,7 +22,7 @@ use Illuminate\Validation\Rule;
  */
 class StoreCareLogRequest extends FormRequest
 {
-    use ValidatesOccurredAt;
+    use NormalizesBlankMemo, ValidatesOccurredAt;
 
     /**
      * {@see self::careAction()} が解決した育児行動のキャッシュ。
@@ -98,8 +99,6 @@ class StoreCareLogRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'memo' => $this->memo === '' ? null : $this->memo,
-        ]);
+        $this->normalizeBlankMemo();
     }
 }

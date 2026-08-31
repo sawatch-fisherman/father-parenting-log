@@ -673,6 +673,65 @@ class CareLogControllerTest extends TestCase
     }
 
     /**
+     * 遡り下限（「7日前の00:00」）より前の日時への変更が拒否されることを検証する。
+     *
+     * `update`の遡り境界は2つの別々の仕組みで守られている：`CareLogPolicy`は
+     * **変更前**の`occurred_at`を見て締め切り済みの記録そのものを弾き、
+     * `occurredAtRangeRule()`の`after_or_equal`は**変更後**の`occurred_at`を見て、
+     * 窓の内側にある記録を窓の外へ移動させる操作を弾く。この経路はPolicyでは
+     * 止まらず`ValidatesOccurredAt`（`StoreCareLogRequest`と共通のトレイト）だけが
+     * 守っているため、抽出時の書き間違いや`CareLogWindow`の将来の変更で緩んでも
+     * 検知できるよう、`StoreCareLogRequest`側の同種テストと同じ粒度で固定する。
+     */
+    public function test_update_to_a_datetime_before_the_backdate_floor_is_rejected(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 03:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-08 21:30:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-02 23:59:59',
+        ]);
+
+        // Assert
+        $response->assertSessionHasErrors(['occurred_at' => '記録できるのは7日前までです。']);
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'occurred_at' => '2024-01-08 21:30:00']);
+    }
+
+    /**
+     * 遡り下限ちょうど（「7日前の00:00」）への変更は許容されることを検証する。
+     *
+     * 前項のテストと対にして、境界自体を1日ズラして誤って弾いていないことも固定する
+     * （`StoreCareLogRequest`側の`test_occurred_at_exactly_at_the_backdate_floor_is_accepted`と対応）。
+     */
+    public function test_update_to_the_backdate_floor_exactly_is_accepted(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 03:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-08 21:30:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-03 00:00:00',
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'occurred_at' => '2024-01-03 00:00:00']);
+    }
+
+    /**
      * 既存の別の記録と同じ日時へ変更しようとすると、分かりやすいバリデーションエラーになることを検証する。
      */
     public function test_update_to_a_datetime_taken_by_another_log_is_rejected(): void

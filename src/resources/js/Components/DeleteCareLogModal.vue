@@ -9,8 +9,9 @@ import { ref } from 'vue';
 import { useModalFocus } from '@/composables/useModalFocus';
 import { useTrans } from '@/composables/useTrans';
 
-defineProps<{
-    // 削除リクエスト送信中。二重送信防止のためボタンをdisableする。
+const props = defineProps<{
+    // 削除リクエスト送信中。二重送信防止のため「削除する」ボタンをdisableするだけでなく、
+    // 「キャンセル」・Escapeでも閉じられないようにする（下記参照）。
     processing: boolean;
 }>();
 
@@ -22,7 +23,17 @@ const emit = defineEmits<{
 const { t } = useTrans();
 
 const dialogRef = ref<HTMLElement | null>(null);
-useModalFocus(dialogRef, () => emit('close'));
+
+// 送信中に閉じてしまうと、削除リクエストは既にサーバーへ渡っているため
+// （`router.delete`の`onFinish`は残る）データ不整合は起きないが、利用者には
+// 「キャンセルしたのに削除された」ように見えてしまう。Escapeキーもここで同様に無視する。
+function closeUnlessProcessing(): void {
+    if (!props.processing) {
+        emit('close');
+    }
+}
+
+useModalFocus(dialogRef, closeUnlessProcessing);
 </script>
 
 <template>
@@ -53,7 +64,8 @@ useModalFocus(dialogRef, () => emit('close'));
                 </button>
                 <button
                     type="button"
-                    class="min-h-11 rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                    class="min-h-11 rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:text-text-secondary"
+                    :disabled="processing"
                     @click="emit('close')"
                 >
                     {{ t('care_logs.delete_confirm_cancel') }}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\NormalizesBlankMemo;
 use App\Http\Requests\Concerns\ValidatesOccurredAt;
 use App\Models\CareLog;
 use App\Models\User;
@@ -22,7 +23,7 @@ use Illuminate\Validation\Rule;
  */
 class UpdateCareLogRequest extends FormRequest
 {
-    use ValidatesOccurredAt;
+    use NormalizesBlankMemo, ValidatesOccurredAt;
 
     /**
      * 対象の育児ログを操作できるか（所有者／遡り期限）を `CareLogPolicy` に委ねる。
@@ -81,9 +82,7 @@ class UpdateCareLogRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'memo' => $this->memo === '' ? null : $this->memo,
-        ]);
+        $this->normalizeBlankMemo();
     }
 
     /**
