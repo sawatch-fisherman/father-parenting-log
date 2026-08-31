@@ -38,19 +38,7 @@ watch(
 
 // サーバー通信を伴う本格的なエラーは既定どおりインラインバナーで出す方針のため（DESIGN.md 11章
 // Error は「再試行導線を必ず添える」ことを要求し、トーストには操作を載せない設計と両立しない）、
-// `flash.error` はここでは拾わない。ここで扱うErrorトーストは、クライアント側だけで完結する
-// 単純な失敗（`XShareModal`のクリップボードコピー失敗など）専用。
-
-const variantClass: Record<'success' | 'error', string> = {
-    success: 'bg-success',
-    error: 'bg-error',
-};
-
-// 状態を色だけで伝えない（DESIGN.md 12章）。アイコンも状態ごとに変える。
-const variantIcon: Record<'success' | 'error', string> = {
-    success: '✓',
-    error: '⚠️',
-};
+// `flash.error` はここでは拾わない。
 </script>
 
 <template>
@@ -59,9 +47,7 @@ const variantIcon: Record<'success' | 'error', string> = {
         コンテンツ領域の上部にある）の近くに出すため。トーストには操作を載せない設計なので、
         親指の届く下部に置く理由がなく、視認性だけを優先できる。
         グローバルナビが z-10、S5等のモーダルが z-30 なので、トーストは常に最前面という
-        位置づけで z-40 にする（review-results/pr-11-review.md Medium「コピー完了トーストが
-        モーダルのオーバーレイの背面に描画される」。モーダル表示中の操作フィードバックも
-        隠れずに届く必要があるため）。
+        位置づけで z-40 にする（モーダル表示中の操作フィードバックも隠れずに届く必要があるため）。
         領域自体はクリックを透過させ、背後のヘッダー・タイルの操作を妨げない。
 
         `md:left-55` はデスクトップの左端をサイドバーの右端（AppLayoutの `md:w-55`＝220px）に
@@ -91,11 +77,10 @@ const variantIcon: Record<'success' | 'error', string> = {
             <div
                 v-if="current"
                 :key="current.id"
-                :class="variantClass[current.variant]"
-                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-white shadow-level-2"
+                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-success px-4 py-3 text-body-sm text-white shadow-level-2"
             >
                 <!-- 状態を色だけで伝えない（DESIGN.md 12章）。アイコンと文言を必ず併記する -->
-                <span aria-hidden="true">{{ variantIcon[current.variant] }}</span>
+                <span aria-hidden="true">✓</span>
                 <span>{{ current.message }}</span>
             </div>
         </Transition>
