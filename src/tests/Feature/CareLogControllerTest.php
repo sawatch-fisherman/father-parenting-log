@@ -446,4 +446,432 @@ class CareLogControllerTest extends TestCase
         // Assert
         $response->assertRedirect(route('login'));
     }
+
+    /**
+     * S11（ログ編集画面）が、対象の記録の現在値と遡り可能範囲を受け取ることを検証する。
+     */
+    public function test_edit_page_receives_the_care_log_and_backdate_window(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create(['name' => 'おむつ交換']);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => 'よく寝た',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->get("/care-logs/{$careLog->id}/edit");
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('CareLogs/Edit')
+            ->where('careLog.id', $careLog->id)
+            ->where('careLog.careActionName', 'おむつ交換')
+            ->where('careLog.occurredDate', '2024-01-09')
+            ->where('careLog.occurredTime', '21:30')
+            ->where('careLog.memo', 'よく寝た')
+            ->where('backdateFloorDate', '2024-01-03')
+            ->where('todayDate', '2024-01-10')
+            ->where('backdateDays', 7),
+        );
+    }
+
+    /**
+     * 他人の記録のS11を開こうとすると`CareLogPolicy`で弾かれることを検証する。
+     *
+     * `{care_log}`はURLにID付きで現れる唯一のリソースのため、IDを直接叩かれても
+     * 他人の育児行動名・メモを覗けないことまで担保する必要がある（docs/screens.md 補足）。
+     */
+    public function test_edit_page_is_forbidden_for_another_users_care_log(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $othersCareLog = CareLog::factory()->create(['occurred_at' => now()->subDay()]);
+
+        // Act
+        $response = $this->actingAs($user)->get("/care-logs/{$othersCareLog->id}/edit");
+
+        // Assert
+        $response->assertForbidden();
+    }
+
+    /**
+     * 「7日前の00:00」より前の記録のS11を開こうとすると`CareLogPolicy`で弾かれることを検証する。
+     */
+    public function test_edit_page_is_forbidden_for_a_care_log_before_the_backdate_floor(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 03:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-02 23:59:59',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->get("/care-logs/{$careLog->id}/edit");
+
+        // Assert
+        $response->assertForbidden();
+    }
+
+    /**
+     * 未認証で`GET /care-logs/{care_log}/edit`にアクセスすると`login`へリダイレクトされることを検証する。
+     */
+    public function test_unauthenticated_access_to_edit_redirects_to_login(): void
+    {
+        // Arrange
+        $careLog = CareLog::factory()->create();
+
+        // Act
+        $response = $this->get("/care-logs/{$careLog->id}/edit");
+
+        // Assert
+        $response->assertRedirect(route('login'));
+    }
+
+    /**
+     * 実施日時とメモが更新され、履歴へ戻ることを検証する。
+     */
+    public function test_it_updates_occurred_at_and_memo(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => 'よく寝た',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-08 07:15:00',
+            'memo' => '朝の分',
+        ]);
+
+        // Assert
+        $response->assertRedirect(route('history.index'));
+        $response->assertInertiaFlash('success', '記録を更新しました');
+        $this->assertDatabaseHas('care_logs', [
+            'id' => $careLog->id,
+            'occurred_at' => '2024-01-08 07:15:00',
+            'memo' => '朝の分',
+        ]);
+    }
+
+    /**
+     * メモを空にして保存するとメモが削除されることを検証する。
+     *
+     * 自由入力欄に意図せず個人情報を書いた場合の自己訂正手段のため、空文字のまま
+     * 残さず`NULL`に正規化する（docs/privacy.md §9、docs/wireframes.md S11）。
+     */
+    public function test_update_clears_the_memo_when_an_empty_value_is_submitted(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => '消したいメモ',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => '',
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'memo' => null]);
+    }
+
+    /**
+     * `occurred_at`を変えずにメモだけ保存しても、自分自身とは重複衝突しないことを検証する
+     * （`Rule::unique`の`ignore()`が効いていること）。
+     *
+     * `StoreCareLogRequest`の`unique`をそのまま流用すると、編集中の行自身が既存行として
+     * 引っかかり、メモだけの修正が永久に保存できなくなる。
+     */
+    public function test_updating_only_the_memo_does_not_conflict_with_itself(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => null,
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => '書き足したメモ',
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', [
+            'id' => $careLog->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'memo' => '書き足したメモ',
+        ]);
+    }
+
+    /**
+     * `care_action_id`・`age_group`・`child_age_group`をリクエストに含めても変更されないことを検証する。
+     *
+     * 育児行動の変更は「削除→再作成」に限る仕様で、年代2列は記録時点のスナップショットのため
+     * 事後に書き換えない（docs/decisions.md §1.3、docs/data-model.md ④）。
+     */
+    public function test_update_does_not_change_the_care_action_or_the_profile_snapshot(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create();
+        $otherCareAction = CareAction::factory()->create();
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+            'age_group' => AgeGroup::Thirties,
+            'child_age_group' => ChildAgeGroup::One,
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-09 22:00:00',
+            'care_action_id' => $otherCareAction->id,
+            'age_group' => AgeGroup::Forties->value,
+            'child_age_group' => ChildAgeGroup::Three->value,
+        ]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('care_logs', [
+            'id' => $careLog->id,
+            'occurred_at' => '2024-01-09 22:00:00',
+            'care_action_id' => $careAction->id,
+            'age_group' => AgeGroup::Thirties->value,
+            'child_age_group' => ChildAgeGroup::One->value,
+        ]);
+    }
+
+    /**
+     * 既存の別の記録と同じ日時へ変更しようとすると、分かりやすいバリデーションエラーになることを検証する。
+     */
+    public function test_update_to_a_datetime_taken_by_another_log_is_rejected(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create();
+        CareLog::factory()->create([
+            'user_id' => $user->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-09 08:00:00',
+        ]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'care_action_id' => $careAction->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-09 08:00:00',
+        ]);
+
+        // Assert
+        $response->assertSessionHasErrors(['occurred_at' => '同じ日時に同じ記録があります。']);
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'occurred_at' => '2024-01-09 21:30:00']);
+    }
+
+    /**
+     * `now() + 5分`を超える未来日時への変更が拒否されることを検証する
+     * （範囲チェックは`StoreCareLogRequest`と共通のルール）。
+     */
+    public function test_update_to_a_datetime_beyond_the_five_minute_future_buffer_is_rejected(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-10 12:05:01',
+        ]);
+
+        // Assert
+        $response->assertSessionHasErrors(['occurred_at' => '未来の日時は記録できません。端末の時刻設定をご確認ください。']);
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'occurred_at' => '2024-01-09 21:30:00']);
+    }
+
+    /**
+     * 他人の記録を更新しようとすると`CareLogPolicy`で弾かれることを検証する。
+     */
+    public function test_update_is_forbidden_for_another_users_care_log(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $othersCareLog = CareLog::factory()->create([
+            'occurred_at' => now()->subDay()->format('Y-m-d H:i:s'),
+            'memo' => null,
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$othersCareLog->id}", [
+            'occurred_at' => now()->format('Y-m-d H:i:s'),
+            'memo' => '乗っ取り',
+        ]);
+
+        // Assert
+        $response->assertForbidden();
+        $this->assertDatabaseHas('care_logs', ['id' => $othersCareLog->id, 'memo' => null]);
+    }
+
+    /**
+     * 「7日前の00:00」より前の記録は、日時を許容範囲内に付け替える更新であっても
+     * `CareLogPolicy`で弾かれることを検証する。
+     *
+     * バリデーションが見るのは「変更後の日時」だけなので、締め切りの判定をPolicy側に
+     * 置いていないと、8日前の記録の日時を今日に書き換える操作が素通りしてしまう
+     * （docs/decisions.md §1.3）。
+     */
+    public function test_update_is_forbidden_for_a_care_log_before_the_backdate_floor(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 03:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-02 23:59:59',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->patch("/care-logs/{$careLog->id}", [
+            'occurred_at' => '2024-01-10 01:00:00',
+        ]);
+
+        // Assert
+        $response->assertForbidden();
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id, 'occurred_at' => '2024-01-02 23:59:59']);
+    }
+
+    /**
+     * 未認証で`PATCH /care-logs/{care_log}`にアクセスすると`login`へリダイレクトされることを検証する。
+     */
+    public function test_unauthenticated_access_to_update_redirects_to_login(): void
+    {
+        // Arrange
+        $careLog = CareLog::factory()->create();
+
+        // Act
+        $response = $this->patch("/care-logs/{$careLog->id}", []);
+
+        // Assert
+        $response->assertRedirect(route('login'));
+    }
+
+    /**
+     * 育児ログが削除され、履歴へ戻ることを検証する。
+     */
+    public function test_it_deletes_a_care_log(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-09 21:30:00',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->delete("/care-logs/{$careLog->id}");
+
+        // Assert
+        $response->assertRedirect(route('history.index'));
+        $response->assertInertiaFlash('success', '記録を削除しました');
+        $this->assertDatabaseMissing('care_logs', ['id' => $careLog->id]);
+    }
+
+    /**
+     * 他人の記録を削除しようとすると`CareLogPolicy`で弾かれることを検証する。
+     */
+    public function test_destroy_is_forbidden_for_another_users_care_log(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $othersCareLog = CareLog::factory()->create(['occurred_at' => now()->subDay()]);
+
+        // Act
+        $response = $this->actingAs($user)->delete("/care-logs/{$othersCareLog->id}");
+
+        // Assert
+        $response->assertForbidden();
+        $this->assertDatabaseHas('care_logs', ['id' => $othersCareLog->id]);
+    }
+
+    /**
+     * 「7日前の00:00」より前の記録は削除できないことを検証する。
+     */
+    public function test_destroy_is_forbidden_for_a_care_log_before_the_backdate_floor(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 03:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careLog = CareLog::factory()->create([
+            'user_id' => $user->id,
+            'occurred_at' => '2024-01-02 23:59:59',
+        ]);
+
+        // Act
+        $response = $this->actingAs($user)->delete("/care-logs/{$careLog->id}");
+
+        // Assert
+        $response->assertForbidden();
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id]);
+    }
+
+    /**
+     * 未認証で`DELETE /care-logs/{care_log}`にアクセスすると`login`へリダイレクトされることを検証する。
+     */
+    public function test_unauthenticated_access_to_destroy_redirects_to_login(): void
+    {
+        // Arrange
+        $careLog = CareLog::factory()->create();
+
+        // Act
+        $response = $this->delete("/care-logs/{$careLog->id}");
+
+        // Assert
+        $response->assertRedirect(route('login'));
+        $this->assertDatabaseHas('care_logs', ['id' => $careLog->id]);
+    }
 }

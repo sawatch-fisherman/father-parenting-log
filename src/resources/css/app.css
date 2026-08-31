@@ -37,7 +37,7 @@
     --color-success: #2f6690;
     --color-warning: #b4791e;
     --color-error: #b3435a;
-    --color-info: #5d82a0;
+    --color-info: #567893;
 
     /* 10章 Dialogs and Notifications（モーダルの半透明オーバーレイ。5.2の14トークンには含まれない
        コンポーネント専用値だが、DESIGN.mdが具体値を明示しているためHEX直書きを避けトークン化する） */

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\GoogleSocialiteController;
 use App\Http\Controllers\CareActionController;
 use App\Http\Controllers\CareLogController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordController;
@@ -32,6 +33,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/care-actions/other', [CareActionController::class, 'other'])->name('care-actions.other');
         Route::get('/care-logs/create', [CareLogController::class, 'create'])->name('care-logs.create');
         Route::post('/care-logs', [CareLogController::class, 'store'])->name('care-logs.store');
+        Route::get('/care-logs/{care_log}/edit', [CareLogController::class, 'edit'])->name('care-logs.edit');
+        Route::patch('/care-logs/{care_log}', [CareLogController::class, 'update'])->name('care-logs.update');
+        Route::delete('/care-logs/{care_log}', [CareLogController::class, 'destroy'])->name('care-logs.destroy');
+
+        Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
 
         Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
         Route::patch('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');
@@ -41,9 +47,6 @@ Route::middleware('auth')->group(function () {
 
         // M7 の StatsController@index に置き換わる暫定プレースホルダ
         Route::get('/stats', fn () => Inertia::render('Stats/Index'))->name('stats.index');
-
-        // M6 の HistoryController@index に置き換わる暫定プレースホルダ
-        Route::get('/history', fn () => Inertia::render('History/Index'))->name('history.index');
     });
 });
 

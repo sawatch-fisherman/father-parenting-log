@@ -181,15 +181,16 @@ flowchart TD
 - **依存**：M4
 - **対応画面/機能**：S13（記録履歴）・S11（ログ編集）／[features.md](features.md)「記録履歴（タイムライン）」／[screens.md](screens.md) `history.index`・`care-logs.edit`・`care-logs.update`・`care-logs.destroy`
 - **タスク**：
-  - [ ] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
-  - [ ] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` と `memo` のみ許可**。育児行動の変更は不可＝削除→再作成。`age_group`／`child_age_group` は編集対象に含めない。**`occurred_at` の範囲バリデーション（「7日前の00:00 〜 `now() + 5分`」）は `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
+  - [x] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
+  - [x] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` と `memo` のみ許可**。育児行動の変更は不可＝削除→再作成。`age_group`／`child_age_group` は編集対象に含めない。**`occurred_at` の範囲バリデーション（「7日前の00:00 〜 `now() + 5分`」）は `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
     - **重複チェック（`Rule::unique`）だけは `StoreCareLogRequest` をそのまま流用しない**：編集中の行を `ignore()` で除外しないと、`occurred_at` を変えずにメモだけ保存した場合に**自分自身と衝突して弾かれる**（`StoreCareLogRequest` の `unique` は `user_id` + `care_action_id` にスコープした `occurred_at` の一意性を見ているため）
-  - [ ] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）。**あわせて「対象の `occurred_at` が『7日前の00:00』より前なら弾く」締めのチェックを `update`・`delete` の両方に入れる**（[decisions.md](decisions.md) §1.3）。S11 の表示（`edit`＝GET）も `update` の ability で守る（[screens.md](screens.md) Controller構成）
-  - [ ] S13 で `occurred_at` が「7日前の00:00」より前の行は「…」を非活性にし、タップ時は理由を伝えるトーストを出す（境界は M4 で用意した共有ヘルパーを参照。[wireframes.md](wireframes.md) S13）
-  - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`memo` がある行は育児行動名の下に2行目として表示**（空なら行を出さない・長文は省略表示）。**`care_logs` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13）、`Pages/CareLogs/Edit.vue`（S11・日時／メモの変更・削除のみ。メモは現在値を初期表示し、空送信で削除できる）
+  - [x] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）。**あわせて「対象の `occurred_at` が『7日前の00:00』より前なら弾く」締めのチェックを `update`・`delete` の両方に入れる**（[decisions.md](decisions.md) §1.3）。S11 の表示（`edit`＝GET）も `update` の ability で守る（[screens.md](screens.md) Controller構成）
+  - [x] S13 で `occurred_at` が「7日前の00:00」より前の行は「…」を非活性にし、タップ時は理由を伝えるトーストを出す（境界は M4 で用意した共有ヘルパーを参照。[wireframes.md](wireframes.md) S13）
+  - [x] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`memo` がある行は育児行動名の下に2行目として表示**（空なら行を出さない・長文は省略表示）。**`care_logs` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13）、`Pages/CareLogs/Edit.vue`（S11・日時／メモの変更・削除のみ。メモは現在値を初期表示し、空送信で削除できる）
 - **テスト観点**：他人の記録を Policy で弾く、**`occurred_at` が「7日前の00:00」より前の記録は `edit`／`update`／`destroy` のいずれも Policy で弾かれる**、`occurred_at` の更新、`memo` の更新・空送信によるクリア、`care_action_id`／`age_group`／`child_age_group` はリクエストに含めても変更されない、削除、更新先が既存行と衝突→バリデーションエラー、**`occurred_at` を変えずにメモだけ保存しても自分自身とは衝突しない（`ignore()` が効いている）**、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
 - **ブロッカー**：未決 #23（S13 の表示件数上限／ページング方式）。**暫定で全件取得のまま着手可**、方式が決まった時点で `HistoryController@index` と `Pages/History/Index.vue` に足す。
+- **備考**：計画に無い追加が3点ある。①S13 の非活性「…」タップ時のトーストは、`DESIGN.md` 10章が Success/Error の2色しか定義していなかったため **Info バリアント（`#567893`＋ℹ️）を新設**した（利用者の操作ミスではないため Error 色は使わない。`DESIGN.md` 10章に追記済み）。②削除確認モーダル（`DESIGN.md` 10章が挙げる「削除確認」）を `Components/DeleteCareLogModal.vue` として実装した。③`occurred_at` の範囲バリデーション（サーバー：`Concerns\ValidatesOccurredAt`）と実施時刻入力欄の上限計算（クライアント：`composables/useOccurredAtMaxTime.ts`）を S10／S11 で共有するため、M4 の実装から共通化して切り出した。
 
 ---
 

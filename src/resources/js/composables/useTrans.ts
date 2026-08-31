@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/vue3';
+import { computed, type ComputedRef } from 'vue';
 
 type Messages = Record<string, Record<string, unknown>>;
 
@@ -31,5 +32,10 @@ export function useTrans() {
         return text;
     }
 
-    return { t };
+    // 日付・数値の整形（`Intl.*`）にはBCP47のロケールタグが要る。翻訳キーを持たない
+    // 「2026年7月15日」のような表記は`lang/*`に文言として持たず、現ロケールを
+    // `Intl.DateTimeFormat`へ渡して組み立てる（S13の日付グループ見出し）。
+    const locale: ComputedRef<string> = computed(() => page.props.locale);
+
+    return { t, locale };
 }

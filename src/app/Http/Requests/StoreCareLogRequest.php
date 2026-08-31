@@ -2,13 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesOccurredAt;
 use App\Models\CareAction;
 use App\Models\User;
-use App\Support\CareLogWindow;
 use Closure;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Validation\Rule;
 
 /**
@@ -22,6 +21,8 @@ use Illuminate\Validation\Rule;
  */
 class StoreCareLogRequest extends FormRequest
 {
+    use ValidatesOccurredAt;
+
     /**
      * {@see self::careAction()} が解決した育児行動のキャッシュ。
      */
@@ -56,14 +57,7 @@ class StoreCareLogRequest extends FormRequest
             ],
             'occurred_at' => [
                 'nullable',
-                // `->format()`を`betweenOrEqual()`より先に呼ぶ必要がある：`Rule::date`は
-                // Carbonインスタンスを既定で`Y-m-d`（時刻を捨てる）にフォーマットするため、
-                // 先に秒精度のフォーマットを指定しておかないと「now()+5分」の上限が
-                // 「今日中ならいつでも可」まで緩んでしまう。
-                Rule::date()->format('Y-m-d H:i:s')->betweenOrEqual(
-                    CareLogWindow::backdateFloor(),
-                    now()->addMinutes(5)
-                ),
+                $this->occurredAtRangeRule(),
                 Rule::unique('care_logs')->where(
                     fn (Builder $query) => $query
                         ->where('user_id', $user->id)
@@ -96,16 +90,7 @@ class StoreCareLogRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            // `:days`は`config('totoops.care_log.backdate_days')`をそのまま渡す。文言に直書きすると
-            // 設定値を変えたときにUI・エラー文言だけ古い日数のまま残ってしまうため
-            // （`CareLogWindow`が遡り境界の算出を1箇所に集約しているのと同じ理由）。
-            'occurred_at.after_or_equal' => __('validation.care_log_occurred_at_too_old', [
-                'days' => Config::integer('totoops.care_log.backdate_days'),
-            ]),
-            'occurred_at.before_or_equal' => __('validation.care_log_occurred_at_future'),
-            'occurred_at.unique' => __('validation.care_log_occurred_at_duplicate'),
-        ];
+        return $this->occurredAtMessages();
     }
 
     /**

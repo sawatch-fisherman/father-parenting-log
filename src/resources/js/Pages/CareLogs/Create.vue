@@ -3,8 +3,9 @@
 // S3の長押し、またはS4の項目タップから遷移する（docs/wireframes.md S10）。
 // 単機能画面のためグローバルナビは表示しない（AppLayout未使用）。
 import { Link, useForm } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { ref } from 'vue';
 import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
+import { useOccurredAtMaxTime } from '@/composables/useOccurredAtMaxTime';
 import { useTrans } from '@/composables/useTrans';
 
 interface CareAction {
@@ -24,60 +25,21 @@ const props = defineProps<{
 const { t } = useTrans();
 const { inputClass, labelClass, errorClass } = useFormFieldClasses();
 
-function pad(value: number): string {
-    return String(value).padStart(2, '0');
-}
-
-// `maxTime`（実施時刻の上限）が「開いた瞬間の現在時刻」に固定されないよう、基準時刻をrefにして
-// 一定間隔で更新する。S10を開いたまま数分放置しても、上限が古いままにならない。
-const now = ref(new Date());
-let nowTimer: ReturnType<typeof setInterval> | null = null;
-
-onMounted(() => {
-    nowTimer = setInterval(() => {
-        now.value = new Date();
-    }, 30_000);
-});
-
-onUnmounted(() => {
-    if (nowTimer) {
-        clearInterval(nowTimer);
-    }
-});
-
 // 実施日・実施時刻は個別の入力欄（<input type="date">/<input type="time">）を持つが、
 // サーバーへは結合済みの `occurred_at` として送る。`form.errors.occurred_at` を
 // そのまま使えるよう、`occurred_at` はここではローカルrefにせずuseFormのフィールドにする。
 const occurredDate = ref(props.todayDate);
-const occurredTime = ref(`${pad(now.value.getHours())}:${pad(now.value.getMinutes())}`);
+
+// 実施時刻の上限計算はS11（ログ編集）と共通のためcomposableに集約している。
+const { maxTime, currentTime } = useOccurredAtMaxTime(occurredDate, props.todayDate);
+
+const occurredTime = ref(currentTime.value);
 
 const form = useForm({
     care_action_id: props.careAction.id,
     occurred_at: '',
     // 空欄（メモなし）は `StoreCareLogRequest::prepareForValidation()` がサーバー側でnullに正規化する。
     memo: '',
-});
-
-// 実施日が「今日」の場合のみ、実施時刻の選択上限を「現在時刻＋5分」に制限する。
-// 過去日を選んだ場合は00:00〜23:59を自由に選べる（docs/wireframes.md S10）。
-// サーバー側でも同じ条件（`StoreCareLogRequest`）で弾くため、これは二重担保。
-const maxTime = computed<string | undefined>(() => {
-    if (occurredDate.value !== props.todayDate) {
-        return undefined;
-    }
-
-    const limit = new Date(now.value.getTime() + 5 * 60 * 1000);
-    const limitDate = `${limit.getFullYear()}-${pad(limit.getMonth() + 1)}-${pad(limit.getDate())}`;
-
-    // 現在時刻が23:55以降だと「現在時刻+5分」が翌日に繰り上がる。<input type="time">は
-    // `min`を指定しない限り`max`のラップアラウンドを解釈しないため、繰り上がった値
-    // （実質00:00〜00:04）をそのまま渡すと23:59までの時刻がすべて無効になってしまう。
-    // 日付が繰り上がる場合は上限を23:59にフォールバックする。
-    if (limitDate !== props.todayDate) {
-        return '23:59';
-    }
-
-    return `${pad(limit.getHours())}:${pad(limit.getMinutes())}`;
 });
 
 function submit(): void {
