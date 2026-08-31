@@ -7,15 +7,9 @@ import { readonly, ref } from 'vue';
  * スコープに置いているのはそのためで、どのページ・どの深さのコンポーネントから `show()` を
  * 呼んでも同じ1件の表示枠に流れ込む。
  *
- * 投入経路は2つある：
- * - サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）→ `ToastHost` が watch して `show()` する
- * - クライアント起因（サーバー通信を伴わない操作）→ 各コンポーネントが直接 `show()` を呼ぶ
- *
- * 現時点の用途は保存成功の通知だけで、色は Success 固定。DESIGN.md 10章はトーストに
- * Success/Error 両方の色を認めているが、実際に成功以外を出す画面が現れる段階
- * （M6 の「7日を過ぎた記録は変更できません」など）で、その用途に合う状態色を選んで足す。
- *
- * @see DESIGN.md 10章「Dialogs and Notifications」・11章「Success」
+ * 投入経路は現状サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）→
+ * `ToastHost` が watch して `show()` する経路のみ。用途は保存成功の通知（Success）専用
+ * （DESIGN.md 10章「Dialogs and Notifications」・11章「Success」）。
  */
 
 interface Toast {

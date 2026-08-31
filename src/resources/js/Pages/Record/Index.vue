@@ -2,8 +2,9 @@
 // Inertia::render('Record/Index')（RecordController@index）が読み込むS3のページコンポーネント。
 // 短タップ＝タップ時刻を`occurred_at`として即記録（POST /care-logs）、
 // 長押し＝実施日時指定画面（S10）へ遷移（docs/wireframes.md S3, docs/decisions.md §1.3）。
-import { Link, router } from '@inertiajs/vue3';
-import { onUnmounted, ref } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onUnmounted, ref, watch } from 'vue';
+import TitleUnlockedModal from '@/Components/TitleUnlockedModal.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
@@ -15,6 +16,11 @@ interface Slot {
     name: string | null;
 }
 
+interface GrantedTitle {
+    name: string;
+    achievementText: string;
+}
+
 defineProps<{
     // slot_position（1〜8）順の配列。行が無い位置はnull（空きスロット）。
     slots: (Slot | null)[];
@@ -22,6 +28,39 @@ defineProps<{
 
 const { t } = useTrans();
 const { show } = useToast();
+
+// S5（称号獲得モーダル）は`POST /care-logs`のレスポンス（`page.flash.titles`）を受けて
+// 自動表示する（docs/screens.md）。1回の記録で複数の称号を同時獲得しうる
+// （例：連続日数の複数段階を一度に達成）ため、キューで1件ずつ順番に見せる。
+const page = usePage();
+const titleQueue = ref<GrantedTitle[]>([]);
+
+function isGrantedTitleArray(value: unknown): value is Array<{ name: unknown; achievement_text: unknown }> {
+    return Array.isArray(value);
+}
+
+watch(
+    () => page.flash,
+    (flash) => {
+        const titles = flash?.titles;
+        if (!isGrantedTitleArray(titles)) {
+            return;
+        }
+
+        for (const title of titles) {
+            if (typeof title.name === 'string' && typeof title.achievement_text === 'string') {
+                titleQueue.value.push({ name: title.name, achievementText: title.achievement_text });
+            }
+        }
+    },
+    { immediate: true },
+);
+
+const currentUnlocked = computed(() => titleQueue.value[0] ?? null);
+
+function closeUnlocked(): void {
+    titleQueue.value.shift();
+}
 
 defineOptions({
     layout: [AppLayout, { active: 'record' }],
@@ -37,8 +76,7 @@ const submitting = ref(false);
 //
 // 「もう一度試す」ボタンは置かない：このエラーが起こりうる原因（未来日時・無効なcare_action_id）は
 // いずれも同じ内容を再送しても直らない（端末時計は変わらない・IDは変わらない）ため、押しても
-// 直らないボタンを出すと誤解を招く。本物の通信障害（ネットワーク切断等）へのリトライ導線は
-// 別途対応する（review-results/pr-10-review-2.mdのMedium「通信エラー」は本ラウンドでは対象外）。
+// 直らないボタンを出すと誤解を招く。本物の通信障害（ネットワーク切断等）へのリトライ導線は別途対応する。
 const errorMessage = ref<string | null>(null);
 
 const LONG_PRESS_MS = 500;
@@ -216,5 +254,13 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
                 {{ t('record.other') }}
             </Link>
         </div>
+
+        <!-- S5はルートを持たないモーダル（S3上のUI状態。docs/screens.md） -->
+        <TitleUnlockedModal
+            v-if="currentUnlocked"
+            :name="currentUnlocked.name"
+            :achievement-text="currentUnlocked.achievementText"
+            @close="closeUnlocked"
+        />
     </div>
 </template>
