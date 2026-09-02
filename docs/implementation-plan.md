@@ -190,7 +190,7 @@ flowchart TD
 - **テスト観点**：他人の記録を Policy で弾く、**`occurred_at` が「7日前の00:00」より前の記録は `edit`／`update`／`destroy` のいずれも Policy で弾かれる**、`occurred_at` の更新、`memo` の更新・空送信によるクリア、`care_action_id`／`age_group`／`child_age_group` はリクエストに含めても変更されない、削除、更新先が既存行と衝突→バリデーションエラー、**`occurred_at` を変えずにメモだけ保存しても自分自身とは衝突しない（`ignore()` が効いている）**、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
 - **ブロッカー**：未決 #23（S13 の表示件数上限／ページング方式）。**暫定で全件取得のまま着手可**、方式が決まった時点で `HistoryController@index` と `Pages/History/Index.vue` に足す。
-- **備考**：計画に無い追加が3点ある。①S13 の非活性「…」タップ時のトーストは、`DESIGN.md` 10章が Success/Error の2色しか定義していなかったため **Info バリアント（`#567893`＋ℹ️）を新設**した（利用者の操作ミスではないため Error 色は使わない。`DESIGN.md` 10章に追記済み）。②削除確認モーダル（`DESIGN.md` 10章が挙げる「削除確認」）を `Components/DeleteCareLogModal.vue` として実装した。③`occurred_at` の範囲バリデーション（サーバー：`Concerns\ValidatesOccurredAt`）と実施時刻入力欄の上限計算（クライアント：`composables/useOccurredAtMaxTime.ts`）を S10／S11 で共有するため、M4 の実装から共通化して切り出した。
+- **備考**：計画に無い追加が3点ある。①S13 の非活性「…」タップ時のトーストは、`DESIGN.md` 10章が Success/Error の2色しか定義していなかったため **Info バリアント（`#567893`＋ℹ️）を新設**した（利用者の操作ミスではないため Error 色は使わない。`DESIGN.md` 10章に追記済み）。②削除確認モーダル（`DESIGN.md` 10章が挙げる「削除確認」）を `Components/DeleteCareLogModal.vue` として実装した。③`occurred_at` の範囲バリデーション（サーバー：`Concerns\ValidatesOccurredAt`）・メモ空文字の `null` 正規化（サーバー：`Concerns\NormalizesBlankMemo`）・実施時刻入力欄の上限計算（クライアント：`composables/useOccurredAtMaxTime.ts`）を S10／S11 で共有するため、M4 の実装から共通化して切り出した。
 
 ---
 

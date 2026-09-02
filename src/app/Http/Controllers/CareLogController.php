@@ -52,8 +52,9 @@ class CareLogController extends Controller
      * ログ編集画面（S11）を表示する。
      *
      * 表示（GET）も更新と同じ `update` の ability で守る。他人の記録の育児行動名・メモを
-     * 覗けないようにするためで、締め切り済みの記録を開いても保存できないため
-     * （docs/screens.md Controller構成、docs/decisions.md §1.3）。
+     * 覗けないようにするためと、締め切り済み（「7日前の00:00」より前）の記録は開いても
+     * 保存できず、編集画面を見せる意味がないため（docs/screens.md Controller構成、
+     * docs/decisions.md §1.3）。
      */
     public function edit(CareLog $careLog): Response
     {

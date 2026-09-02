@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
  *
  * 変更できるのは `occurred_at` と `memo` だけで、`care_action_id`・`age_group`・
  * `child_age_group` は受け取らない（育児行動を変えたい場合は削除→再作成。年代2列は
- * 記録時点のスナップショットのため事後に書き換えない。[docs/decisions.md](../../../docs/decisions.md) §1.3）。
+ * 記録時点のスナップショットのため事後に書き換えない。[docs/decisions.md](../../../../docs/decisions.md) §1.3）。
  * リクエストに含めて送られてきても `validated()` に現れないため、コントローラ側で除外する必要はない。
  *
  * @see docs/implementation-plan.md「M6 履歴（S13, S11）」
@@ -78,7 +78,7 @@ class UpdateCareLogRequest extends FormRequest
      * メモの未入力（空文字）を`null`に正規化する。
      *
      * S11 は「空にして保存すればメモを削除できる」画面のため、空文字のまま保存すると
-     * 見た目上は消えても `memo` に空文字が残る（[docs/wireframes.md](../../../docs/wireframes.md) S11）。
+     * 見た目上は消えても `memo` に空文字が残る（[docs/wireframes.md](../../../../docs/wireframes.md) S11）。
      */
     protected function prepareForValidation(): void
     {

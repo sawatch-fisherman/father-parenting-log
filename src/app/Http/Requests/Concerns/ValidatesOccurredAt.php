@@ -11,7 +11,7 @@ use Illuminate\Validation\Rules\Date;
  * `occurred_at` の許容範囲（「`backdate_days`日前の00:00 〜 `now() + 5分`」）の検証ルールと
  * エラー文言を、`StoreCareLogRequest`（M4）と `UpdateCareLogRequest`（M6）で共有する。
  *
- * 範囲そのものは両者で完全に同じ（[docs/implementation-plan.md](../../../../docs/implementation-plan.md)
+ * 範囲そのものは両者で完全に同じ（[docs/implementation-plan.md](../../../../../docs/implementation-plan.md)
  * 「M6 履歴」）で、片方だけ直すと「登録はできるが編集は弾かれる」ような食い違いが生まれるため、
  * `CareLogWindow` が遡り境界の算出を1箇所に集約しているのと同じ理由でここに寄せる。
  * 一方で重複チェック（`Rule::unique`）は共有しない：編集時だけ自分自身を `ignore()` する必要があり、
