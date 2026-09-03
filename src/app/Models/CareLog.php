@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AgeGroup;
 use App\Enums\ChildAgeGroup;
+use App\Support\CareLogWindow;
 use Database\Factories\CareLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -46,5 +47,18 @@ class CareLog extends Model
     public function careAction(): BelongsTo
     {
         return $this->belongsTo(CareAction::class);
+    }
+
+    /**
+     * この記録がまだ遡り操作（`occurred_at`変更・削除）の許容範囲内かを判定する。
+     *
+     * 判定そのものを`CareLogPolicy`（認可）とS13の「…」の活性判定（表示）で共有する。
+     * `CareLogWindow`で境界の算出を1箇所にまとめても、比較を各所で書けば
+     * 「`>=`か`>`か」の食い違いが生まれうるため、比較ごとここへ寄せる
+     * （docs/decisions.md §1.3）。
+     */
+    public function isWithinBackdateWindow(): bool
+    {
+        return $this->occurred_at->greaterThanOrEqualTo(CareLogWindow::backdateFloor());
     }
 }

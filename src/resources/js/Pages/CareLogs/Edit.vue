@@ -5,9 +5,10 @@
 // 単機能画面のためグローバルナビは表示しない（AppLayout未使用。DESIGN.md 10章 Navigation）。
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import CareLogFormFields from '@/Components/CareLogFormFields.vue';
 import DeleteCareLogModal from '@/Components/DeleteCareLogModal.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
-import { useOccurredAtMaxTime } from '@/composables/useOccurredAtMaxTime';
 import { useTrans } from '@/composables/useTrans';
 
 interface EditableCareLog {
@@ -29,14 +30,14 @@ const props = defineProps<{
 }>();
 
 const { t } = useTrans();
-const { inputClass, labelClass, errorClass } = useFormFieldClasses();
+const { labelClass } = useFormFieldClasses();
+const { primaryButtonClass, destructiveButtonClass } = useButtonClasses();
 
 // 実施日・実施時刻は個別の入力欄を持つが、サーバーへは結合済みの `occurred_at` として送る
-// （`form.errors.occurred_at` をそのまま使えるようにするため。S10と同じ組み立て）。
+// （`form.errors.occurred_at` をそのまま使えるようにするため。入力欄はS10と共通の
+// `CareLogFormFields` に置いている）。
 const occurredDate = ref(props.careLog.occurredDate);
 const occurredTime = ref(props.careLog.occurredTime);
-
-const { maxTime } = useOccurredAtMaxTime(occurredDate, props.todayDate);
 
 const form = useForm({
     occurred_at: '',
@@ -90,60 +91,27 @@ function destroy(): void {
                     <p class="text-body text-text-primary">{{ careLog.careActionName }}</p>
                 </div>
 
-                <div class="space-y-1">
-                    <label for="occurred_date" :class="labelClass">{{ t('care_logs.date_label') }}</label>
-                    <input
-                        id="occurred_date"
-                        v-model="occurredDate"
-                        type="date"
-                        required
-                        :min="backdateFloorDate"
-                        :max="todayDate"
-                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
-                    />
-                    <p class="text-body-sm text-text-secondary">{{ t('care_logs.date_help', { days: backdateDays }) }}</p>
-                </div>
-
-                <div class="space-y-1">
-                    <label for="occurred_time" :class="labelClass">{{ t('care_logs.time_label') }}</label>
-                    <input
-                        id="occurred_time"
-                        v-model="occurredTime"
-                        type="time"
-                        required
-                        :max="maxTime"
-                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
-                    />
-                </div>
-
-                <p v-if="form.errors.occurred_at" :class="errorClass">{{ form.errors.occurred_at }}</p>
-
-                <div class="space-y-1">
-                    <label for="memo" :class="labelClass">{{ t('care_logs.memo_label') }}</label>
-                    <textarea
-                        id="memo"
-                        v-model="form.memo"
-                        maxlength="255"
-                        rows="3"
-                        :class="[inputClass, form.errors.memo ? 'border-error' : 'border-border']"
-                    ></textarea>
-                    <p v-if="form.errors.memo" :class="errorClass">{{ form.errors.memo }}</p>
-                </div>
+                <CareLogFormFields
+                    v-model:occurred-date="occurredDate"
+                    v-model:occurred-time="occurredTime"
+                    :form="form"
+                    :backdate-floor-date="backdateFloorDate"
+                    :today-date="todayDate"
+                    :backdate-days="backdateDays"
+                />
 
                 <div class="flex flex-col gap-3">
                     <button
                         type="submit"
-                        class="min-h-11 w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
+                        :class="['min-h-11 w-full', primaryButtonClass]"
                         :disabled="form.processing"
                     >
                         {{ t('care_logs.submit') }}
                     </button>
 
-                    <!-- Destructive（DESIGN.md 10章 Buttons）：塗りにはせず枠線と文字色をError色にして、
-                         誤タップの被害を抑える -->
                     <button
                         type="button"
-                        class="min-h-11 w-full rounded-xl border border-error bg-transparent px-5 py-3 text-label font-semibold text-error focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                        :class="['min-h-11 w-full', destructiveButtonClass]"
                         @click="confirmingDeletion = true"
                     >
                         {{ t('care_logs.delete') }}

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\CareLog;
 use App\Models\User;
-use App\Support\CareLogWindow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
@@ -22,9 +21,10 @@ class HistoryController extends Controller
      * 自分の育児ログを日付ごとにグループ化し、新しい順のタイムラインとして表示する。
      *
      * 各行の `editable` は「遡り操作の締め（`backdate_days`日前の00:00）より後か」で、
-     * S13の「…」の活性／非活性がサーバー側の `CareLogPolicy` と必ず同じ境界になるよう
-     * `CareLogWindow` から算出した値をそのまま渡す（クライアント側で日付計算をやり直すと
-     * 1日ズレて「操作できるのに保存できない」行が生まれる。docs/decisions.md §1.3）。
+     * S13の「…」の活性／非活性がサーバー側の `CareLogPolicy` と必ず同じ境界になるよう、
+     * 認可と同じ `CareLog::isWithinBackdateWindow()` の結果をそのまま渡す（クライアント側で
+     * 日付計算をやり直すと1日ズレて「操作できるのに保存できない」行が生まれる。
+     * docs/decisions.md §1.3）。
      *
      * 表示件数の上限・ページングは未決#23のため、暫定で全件を返す
      * （docs/implementation-plan.md「M6 履歴」ブロッカー）。
@@ -33,8 +33,6 @@ class HistoryController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-
-        $backdateFloor = CareLogWindow::backdateFloor();
 
         /** @var Collection<int, CareLog> $careLogs */
         $careLogs = $user->careLogs()
@@ -58,7 +56,7 @@ class HistoryController extends Controller
                         'time' => $careLog->occurred_at->format('H:i'),
                         'careActionName' => $careLog->careAction?->name,
                         'memo' => $careLog->memo,
-                        'editable' => $careLog->occurred_at->greaterThanOrEqualTo($backdateFloor),
+                        'editable' => $careLog->isWithinBackdateWindow(),
                     ])
                     ->values()
                     ->all(),

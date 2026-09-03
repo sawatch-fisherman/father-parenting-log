@@ -3,10 +3,10 @@ import { computed, onMounted, onUnmounted, ref, type ComputedRef, type Ref } fro
 /**
  * 実施時刻入力欄（`<input type="time">`）の選択上限を、選択中の実施日に応じて返す composable。
  *
- * S10（新規記録）とS11（ログ編集）が同じ入力欄を持ち、サーバー側のバリデーションも
- * `StoreCareLogRequest`／`UpdateCareLogRequest` で共通のため、UI側の上限計算も1箇所に集約する
- * （片方だけ直すとUIとサーバーの許容範囲が食い違う）。UIの制限はサーバー側バリデーションの
- * 代替ではなく二重担保（docs/wireframes.md S10）。
+ * S10（新規記録）とS11（ログ編集）は入力欄そのものを `Components/CareLogFormFields.vue` で
+ * 共用しており、サーバー側のバリデーションも `StoreCareLogRequest`／`UpdateCareLogRequest` で
+ * 共通のため、UI側の上限計算もこの1箇所に集約する（別々に書くとUIとサーバーの許容範囲が
+ * 食い違う）。UIの制限はサーバー側バリデーションの代替ではなく二重担保（docs/wireframes.md S10）。
  */
 
 /** 端末クロックの軽微なズレを吸収するバッファ（サーバー側の許容範囲と同じ5分）。 */
@@ -19,10 +19,22 @@ function pad(value: number): string {
     return String(value).padStart(2, '0');
 }
 
+/**
+ * 現在時刻を`<input type="time">`のvalue形式（'HH:MM'）で返す。
+ *
+ * S10で実施時刻の初期値に使う。上限（`maxTime`）と同じ書式・同じ丸め方で組み立てる必要が
+ * あるため、composable本体と同じ`pad()`を共有する。
+ */
+export function currentTimeString(): string {
+    const now = new Date();
+
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
 export function useOccurredAtMaxTime(
     occurredDate: Ref<string>,
     todayDate: string,
-): { maxTime: ComputedRef<string | undefined>; currentTime: ComputedRef<string> } {
+): { maxTime: ComputedRef<string | undefined> } {
     // 上限が「画面を開いた瞬間の現在時刻」に固定されないよう、基準時刻をrefにして一定間隔で更新する。
     // 画面を開いたまま数分放置しても、上限が古いままにならない。
     const now = ref(new Date());
@@ -39,9 +51,6 @@ export function useOccurredAtMaxTime(
             clearInterval(nowTimer);
         }
     });
-
-    /** 現在時刻（'HH:MM'）。新規記録時の実施時刻の初期値に使う。 */
-    const currentTime = computed(() => `${pad(now.value.getHours())}:${pad(now.value.getMinutes())}`);
 
     // 実施日が「今日」の場合のみ、実施時刻の選択上限を「現在時刻＋5分」に制限する。
     // 過去日を選んだ場合は00:00〜23:59を自由に選べる（docs/wireframes.md S10）。
@@ -64,5 +73,5 @@ export function useOccurredAtMaxTime(
         return `${pad(limit.getHours())}:${pad(limit.getMinutes())}`;
     });
 
-    return { maxTime, currentTime };
+    return { maxTime };
 }

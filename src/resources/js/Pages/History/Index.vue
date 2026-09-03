@@ -5,6 +5,7 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
 
@@ -36,6 +37,7 @@ const props = defineProps<{
 
 const { t, locale } = useTrans();
 const { show } = useToast();
+const { primaryButtonClass } = useButtonClasses();
 
 defineOptions({
     layout: [AppLayout, { active: 'history' }],
@@ -73,7 +75,7 @@ function notifyLocked(): void {
             <p class="text-body text-text-secondary">{{ t('history.empty_body') }}</p>
             <Link
                 href="/"
-                class="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="['mt-4 inline-flex min-h-11 items-center justify-center', primaryButtonClass]"
             >
                 {{ t('history.empty_cta') }}
             </Link>

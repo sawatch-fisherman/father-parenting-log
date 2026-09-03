@@ -2,6 +2,7 @@
 // Inertia::render('Profile/Register')（ProfileController@create）が読み込むページコンポーネント（S2）
 import { useForm } from '@inertiajs/vue3';
 import ProfileFormFields from '@/Components/ProfileFormFields.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useTrans } from '@/composables/useTrans';
 
 interface Option {
@@ -15,6 +16,7 @@ defineProps<{
 }>();
 
 const { t } = useTrans();
+const { primaryButtonClass } = useButtonClasses();
 
 const form = useForm({
     nickname: '',
@@ -41,7 +43,7 @@ function submit(): void {
 
             <button
                 type="submit"
-                class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
+                :class="['w-full', primaryButtonClass]"
                 :disabled="form.processing"
             >
                 {{ t('profile.register_submit') }}

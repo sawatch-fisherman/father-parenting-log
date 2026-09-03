@@ -4,8 +4,10 @@
 // 単機能画面のためグローバルナビは表示しない（AppLayout未使用）。
 import { Link, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import CareLogFormFields from '@/Components/CareLogFormFields.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useFormFieldClasses } from '@/composables/useFormFieldClasses';
-import { useOccurredAtMaxTime } from '@/composables/useOccurredAtMaxTime';
+import { currentTimeString } from '@/composables/useOccurredAtMaxTime';
 import { useTrans } from '@/composables/useTrans';
 
 interface CareAction {
@@ -23,17 +25,15 @@ const props = defineProps<{
 }>();
 
 const { t } = useTrans();
-const { inputClass, labelClass, errorClass } = useFormFieldClasses();
+const { errorClass } = useFormFieldClasses();
+const { primaryButtonClass } = useButtonClasses();
 
 // 実施日・実施時刻は個別の入力欄（<input type="date">/<input type="time">）を持つが、
 // サーバーへは結合済みの `occurred_at` として送る。`form.errors.occurred_at` を
 // そのまま使えるよう、`occurred_at` はここではローカルrefにせずuseFormのフィールドにする。
+// 入力欄自体はS11（ログ編集）と共通の `CareLogFormFields` に置いている。
 const occurredDate = ref(props.todayDate);
-
-// 実施時刻の上限計算はS11（ログ編集）と共通のためcomposableに集約している。
-const { maxTime, currentTime } = useOccurredAtMaxTime(occurredDate, props.todayDate);
-
-const occurredTime = ref(currentTime.value);
+const occurredTime = ref(currentTimeString());
 
 const form = useForm({
     care_action_id: props.careAction.id,
@@ -68,49 +68,18 @@ function submit(): void {
                      万一サーバー側で無効と判定された場合に無反応にならないよう表示する -->
                 <p v-if="form.errors.care_action_id" :class="errorClass">{{ form.errors.care_action_id }}</p>
 
-                <div class="space-y-1">
-                    <label for="occurred_date" :class="labelClass">{{ t('care_logs.date_label') }}</label>
-                    <input
-                        id="occurred_date"
-                        v-model="occurredDate"
-                        type="date"
-                        required
-                        :min="backdateFloorDate"
-                        :max="todayDate"
-                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
-                    />
-                    <p class="text-body-sm text-text-secondary">{{ t('care_logs.date_help', { days: backdateDays }) }}</p>
-                </div>
-
-                <div class="space-y-1">
-                    <label for="occurred_time" :class="labelClass">{{ t('care_logs.time_label') }}</label>
-                    <input
-                        id="occurred_time"
-                        v-model="occurredTime"
-                        type="time"
-                        required
-                        :max="maxTime"
-                        :class="[inputClass, form.errors.occurred_at ? 'border-error' : 'border-border']"
-                    />
-                </div>
-
-                <p v-if="form.errors.occurred_at" :class="errorClass">{{ form.errors.occurred_at }}</p>
-
-                <div class="space-y-1">
-                    <label for="memo" :class="labelClass">{{ t('care_logs.memo_label') }}</label>
-                    <textarea
-                        id="memo"
-                        v-model="form.memo"
-                        maxlength="255"
-                        rows="3"
-                        :class="[inputClass, form.errors.memo ? 'border-error' : 'border-border']"
-                    ></textarea>
-                    <p v-if="form.errors.memo" :class="errorClass">{{ form.errors.memo }}</p>
-                </div>
+                <CareLogFormFields
+                    v-model:occurred-date="occurredDate"
+                    v-model:occurred-time="occurredTime"
+                    :form="form"
+                    :backdate-floor-date="backdateFloorDate"
+                    :today-date="todayDate"
+                    :backdate-days="backdateDays"
+                />
 
                 <button
                     type="submit"
-                    class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
+                    :class="['w-full', primaryButtonClass]"
                     :disabled="form.processing"
                 >
                     {{ t('care_logs.submit') }}

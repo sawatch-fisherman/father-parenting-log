@@ -6,6 +6,7 @@
 // onMounted/onBeforeUnmount で初期フォーカスとフォーカストラップを張る設計のため。
 // ページ側に置くと「モーダルを開いた瞬間」ではなく「ページを開いた瞬間」に張られてしまう。
 import { ref } from 'vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useModalFocus } from '@/composables/useModalFocus';
 import { useTrans } from '@/composables/useTrans';
 
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useTrans();
+const { secondaryButtonClass, destructiveButtonClass } = useButtonClasses();
 
 const dialogRef = ref<HTMLElement | null>(null);
 
@@ -53,10 +55,9 @@ useModalFocus(dialogRef, closeUnlessProcessing);
             <p class="mt-2 text-body text-text-secondary">{{ t('care_logs.delete_confirm_body') }}</p>
 
             <div class="mt-6 flex flex-col gap-3">
-                <!-- Destructive（DESIGN.md 10章 Buttons）：塗りにはせず枠線と文字色をError色にする -->
                 <button
                     type="button"
-                    class="min-h-11 rounded-xl border border-error bg-transparent px-5 py-3 text-label font-semibold text-error focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:border-border disabled:text-text-secondary"
+                    :class="['min-h-11', destructiveButtonClass]"
                     :disabled="processing"
                     @click="emit('confirm')"
                 >
@@ -64,7 +65,7 @@ useModalFocus(dialogRef, closeUnlessProcessing);
                 </button>
                 <button
                     type="button"
-                    class="min-h-11 rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:text-text-secondary"
+                    :class="['min-h-11', secondaryButtonClass]"
                     :disabled="processing"
                     @click="emit('close')"
                 >

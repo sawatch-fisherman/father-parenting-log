@@ -92,11 +92,7 @@ class CareLogController extends Controller
                 'memo' => $request->validated('memo'),
             ]);
         } catch (UniqueConstraintViolationException) {
-            // 別タブからのほぼ同時操作など、アプリ層の`Rule::unique`をすり抜けた真の競合を
-            // 同じ分かりやすいエラーに変換する（`store`と同型の対応）。
-            throw ValidationException::withMessages([
-                'occurred_at' => __('validation.care_log_occurred_at_duplicate'),
-            ]);
+            throw $this->duplicateOccurredAt();
         }
 
         Inertia::flash('success', __('care_logs.updated'));
@@ -119,6 +115,21 @@ class CareLogController extends Controller
         Inertia::flash('success', __('care_logs.deleted'));
 
         return redirect()->route('history.index');
+    }
+
+    /**
+     * `occurred_at` の重複を伝えるバリデーション例外を組み立てる（`store`・`update` 共通）。
+     *
+     * アプリ層の `Rule::unique`（`StoreCareLogRequest`／`UpdateCareLogRequest`）はほぼ全ての
+     * 二重送信・重複を弾くが、複数タブからのほぼ同時送信のような真の競合状態はすり抜けうる。
+     * DBのUNIQUE制約違反も同じ分かりやすいエラーに変換して、登録と編集で文言・挙動を揃える
+     * （`ProfileController@store` のUNIQUE制約吸収と同型の対応）。
+     */
+    private function duplicateOccurredAt(): ValidationException
+    {
+        return ValidationException::withMessages([
+            'occurred_at' => __('validation.care_log_occurred_at_duplicate'),
+        ]);
     }
 
     /**
@@ -156,13 +167,7 @@ class CareLogController extends Controller
                 'memo' => $request->validated('memo'),
             ]);
         } catch (UniqueConstraintViolationException) {
-            // アプリ層の Rule::unique（StoreCareLogRequest）はほぼ全ての二重送信を弾くが、
-            // 複数タブからのほぼ同時送信のような真の競合状態はすり抜けうるため、
-            // DBのUNIQUE制約違反も同じ分かりやすいエラーに変換する
-            // （ProfileController@store のUNIQUE制約吸収と同型の対応）。
-            throw ValidationException::withMessages([
-                'occurred_at' => __('validation.care_log_occurred_at_duplicate'),
-            ]);
+            throw $this->duplicateOccurredAt();
         }
 
         // 通常の共有props（`->with()`→session→`HandleInertiaRequests::share()`経由）だとInertiaが

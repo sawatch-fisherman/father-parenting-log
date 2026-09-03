@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\CareLog;
 use App\Models\User;
-use App\Support\CareLogWindow;
 
 /**
  * 育児ログの事後操作（S11の表示・日時／メモの変更・削除）の認可。
@@ -42,6 +41,6 @@ class CareLogPolicy
     private function isOwnedAndStillOpen(User $user, CareLog $careLog): bool
     {
         return $careLog->user_id === $user->id
-            && $careLog->occurred_at->greaterThanOrEqualTo(CareLogWindow::backdateFloor());
+            && $careLog->isWithinBackdateWindow();
     }
 }
