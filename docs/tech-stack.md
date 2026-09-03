@@ -22,6 +22,8 @@
 | Tailwind CSS | 4.3.2 |
 | Vite | 8.1.4 |
 | laravel-vite-plugin | 3.1.0 |
+| Chart.js | 4.5.1 |
+| vue-chartjs | 5.3.4 |
 
 ## データベース・インフラ（Docker）
 

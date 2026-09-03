@@ -1,5 +1,27 @@
 <?php
 
 return [
-    'placeholder' => '集計画面（M7で実装予定）',
+    'title' => '集計',
+
+    'tab_day' => '日',
+    'tab_week' => '週',
+    'tab_month' => '月',
+    'tab_all' => '全期間',
+
+    'prev_period' => '前の期間',
+    'next_period' => '次の期間',
+
+    // 内訳マトリクス表・累計リスト共通の見出し（DESIGN.md 5.5節：色チップ＋育児行動名で凡例を兼ねる）。
+    'breakdown_action_header' => '育児行動',
+    'breakdown_total_label' => '合計',
+
+    // 全期間タブの累計実績カード。
+    'all_time_total_count' => '累計記録',
+    'all_time_total_days' => '記録した日数',
+    'count_unit' => ':count回',
+    'days_unit' => ':days日',
+
+    'empty_title' => 'まだ記録がありません',
+    'empty_body' => '記録画面からはじめましょう',
+    'empty_cta' => '記録する',
 ];

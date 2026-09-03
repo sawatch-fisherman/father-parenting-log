@@ -206,15 +206,16 @@ flowchart TD
   - **色は `care_action_id` に固定割り当て**（`sort_order` は使わない）。期間を送っても色は動かない
   - **内訳テーブルは「育児行動 × 7バケット」のマトリクス**。各行の先頭に色チップを置き、グラフの凡例を兼ねる。モバイル（375px）では行動名を1行使って上に置き、その下に7つの値を並べる
 - **タスク**：
-  - [ ] `npm install chart.js vue-chartjs`（現状 `src/package.json` に未収録）。導入後、実バージョンを [tech-stack.md](tech-stack.md) に記載する
-  - [ ] `StatsController@index`（`GET /stats`）：**7バケットぶんの集計**（Query Scope）＋育児行動ごとの件数内訳。全期間タブ＝累計実績（累計おむつ交換数 等）。自分の `care_logs` を直接集計（Phase 2 の集約テーブルは使わない。[decisions.md](decisions.md) §1.3）
-  - [ ] **対象期間の指定（期間送り）**：`index` は「タブ種別（日/週/月/全期間）＋基準日」をクエリパラメータで受け取り、**基準日を含む7バケットぶん**の集計を返す。不正・欠落したパラメータは既定タブ＋今日にフォールバックする（**既定タブを「日」と「週」のどちらにするかは着手時にユーザーへ確認する**。[wireframes.md](wireframes.md) S12 の `2026/07/09〜15` は7日ぶんの範囲＝**日タブの表示そのもの**であり、週表示ではない）。**全期間タブでは期間送りを表示しない**（[wireframes.md](wireframes.md) S12）
-  - [ ] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋**期間送り矢印（全期間タブでは非表示）**＋グラフ＋内訳マトリクス表。**対象期間の記録が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。期間タブ自体は空状態でも表示したままにする。[wireframes.md](wireframes.md) S12空状態）
-  - [ ] Phase 2 導線（称号図鑑・全体傾向）は本スライスでは**器のみ or 省略**（[screens.md](screens.md) S12 備考、[decisions.md](decisions.md) §1.3）
+  - [x] `npm install chart.js vue-chartjs`（現状 `src/package.json` に未収録）。導入後、実バージョンを [tech-stack.md](tech-stack.md) に記載する
+  - [x] `StatsController@index`（`GET /stats`）：**7バケットぶんの集計**（Query Scope）＋育児行動ごとの件数内訳。全期間タブ＝累計実績（累計おむつ交換数 等）。自分の `care_logs` を直接集計（Phase 2 の集約テーブルは使わない。[decisions.md](decisions.md) §1.3）
+  - [x] **対象期間の指定（期間送り）**：`index` は「タブ種別（日/週/月/全期間）＋基準日」をクエリパラメータで受け取り、**基準日を含む7バケットぶん**の集計を返す。不正・欠落したパラメータは既定タブ＋今日にフォールバックする（**既定タブを「日」と「週」のどちらにするかは着手時にユーザーへ確認する**。[wireframes.md](wireframes.md) S12 の `2026/07/09〜15` は7日ぶんの範囲＝**日タブの表示そのもの**であり、週表示ではない）。**全期間タブでは期間送りを表示しない**（[wireframes.md](wireframes.md) S12）
+  - [x] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋**期間送り矢印（全期間タブでは非表示）**＋グラフ＋内訳マトリクス表。**対象期間の記録が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。期間タブ自体は空状態でも表示したままにする。[wireframes.md](wireframes.md) S12空状態）
+  - [x] Phase 2 導線（称号図鑑・全体傾向）は本スライスでは**器のみ or 省略**（[screens.md](screens.md) S12 備考、[decisions.md](decisions.md) §1.3） → 省略した（ボタン自体を出さない）
 - **テスト観点**：各期間の集計値の正しさ、育児行動別の内訳、**日/週/月タブが7バケットぶん返る**、**期間送りで窓が7バケットぶんスライドする**、**全期間タブでは期間送りが出ず累計折れ線になる**、**期間内0回の育児行動が内訳に出ない**、**不正なタブ種別・基準日が既定値にフォールバックする**、対象期間の記録が0件のときに空状態が表示される（グラフ・内訳の代わりに）。
 - **完了条件**：DoD ＋ 4タブの集計が表示され、日/週/月タブで前後の期間を送れる。
-- **ブロッカー**：**[DESIGN.md](../DESIGN.md) 5章の系列色パレットの実値確定**（規則は策定済み・実値とコントラスト検証は未了）。**`StatsController` と内訳マトリクス表は確定前でも着手可**、グラフ描画のみ確定後。※ 旧ブロッカーの未決 #22（グラフ描画ライブラリ）は Chart.js + vue-chartjs 採用で解消済み。
+- **ブロッカー**：**解消済み**。~~[DESIGN.md](../DESIGN.md) 5章の系列色パレットの実値確定~~ → M7実装時に25色を算出・コントラスト検証済み（DESIGN.md 5.5節・`src/resources/css/app.css` の `--color-series-1`〜`25`）。※ 旧ブロッカーの未決 #22（グラフ描画ライブラリ）は Chart.js + vue-chartjs 採用で解消済み。
 - **備考（Chart.js 実装時の注意）**：Chart.js は Canvas 描画のためスクリーンリーダーがグラフの中身を読めない。**内訳マトリクス表が代替テキストの役割を兼ねる**ので、表は必ず残す。あわせて、`Chart.defaults.font.family` に Noto Sans JP を指定しないと Canvas 内だけ別フォントになる／Canvas は CSS 変数を解釈しないため `@theme` トークンは `getComputedStyle` で解決した値を渡す（CLAUDE.md「生の HEX 値を新規コードに書かない」）／`Chart.register()` で使う要素だけ登録する（`registerables` の全登録はしない）／`responsive: true` ＋ `maintainAspectRatio: false` と親要素の高さ指定でモバイル対応する。
+- **備考（実装時に決めた事項）**：①既定タブは着手時にユーザーへ確認し「日」に決定した。②週タブのバケット境界（週の開始曜日）はどのドキュメントにも明記が無かったため、月曜始まり（`Carbon::MONDAY`〜`SUNDAY`）を実装側で採用した（`App\Support\StatsBucketWindow`）。③棒グラフ上のバケット合計回数表示は、`chartjs-plugin-datalabels` 等の追加npm依存を足さず、Chart.jsの`plugins`propに渡す1回限りの描画プラグインとして実装した（decisions.md「Chart.jsコアの標準機能のみ」の範囲内）。④Phase 2導線（称号一覧・みんなの傾向）は本スライスでは器も作らず完全に省略した。
 
 ---
 

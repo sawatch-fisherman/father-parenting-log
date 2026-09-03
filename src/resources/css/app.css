@@ -60,6 +60,37 @@
     /* 8.2 面の境界と階層表現（影は2段階のみ。通常のカードは影なし＝borderのみで表現する） */
     --shadow-level-1: 0 1px 2px rgba(51, 48, 44, 0.06);
     --shadow-level-2: 0 4px 16px rgba(51, 48, 44, 0.12);
+
+    /* 5.5 系列色（チャート用）。S12の積み上げ棒・内訳表の色チップ用で、5.2の14トークンとは
+       役割が別の独立系統（ブランド色・状態色と色相を衝突させない）。index=1〜17は
+       CareActionId定数（1〜17）に、18〜25はPhase2のユーザーカスタム育児行動に対応する
+       （`index = 18 + ((id - CareActionId::CUSTOM_ID_FLOOR) mod 8)`）。Chart.js はCanvas描画で
+       CSS変数を解釈できないため、JS側は getComputedStyle() でこの値を解決してから渡す。 */
+    --color-series-1: #2f934c;
+    --color-series-2: #692f93;
+    --color-series-3: #938a2f;
+    --color-series-4: #2f8793;
+    --color-series-5: #932f65;
+    --color-series-6: #5e932f;
+    --color-series-7: #332f93;
+    --color-series-8: #92932f;
+    --color-series-9: #2f936e;
+    --color-series-10: #8b2f93;
+    --color-series-11: #7e932f;
+    --color-series-12: #2f4993;
+    --color-series-13: #932f71;
+    --color-series-14: #2f933d;
+    --color-series-15: #552f93;
+    --color-series-16: #88932f;
+    --color-series-17: #2f938f;
+    --color-series-18: #932f7b;
+    --color-series-19: #68932f;
+    --color-series-20: #2f3a93;
+    --color-series-21: #932f85;
+    --color-series-22: #2f9359;
+    --color-series-23: #762f93;
+    --color-series-24: #73932f;
+    --color-series-25: #2f9382;
 }
 
 @layer base {
