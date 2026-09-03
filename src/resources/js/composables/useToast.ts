@@ -7,16 +7,28 @@ import { readonly, ref } from 'vue';
  * スコープに置いているのはそのためで、どのページ・どの深さのコンポーネントから `show()` を
  * 呼んでも同じ1件の表示枠に流れ込む。
  *
- * 投入経路は現状サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）→
- * `ToastHost` が watch して `show()` する経路のみ。用途は保存成功の通知（Success）専用
- * （DESIGN.md 10章「Dialogs and Notifications」・11章「Success」）。
+ * 投入経路は2つ。サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）を
+ * `ToastHost` が watch して `show()` する経路（保存成功）と、ページから直接 `show()` を呼ぶ
+ * 経路（S13の「7日を過ぎた記録は変更できません」など、サーバー往復を伴わない通知）。
+ *
+ * @see DESIGN.md 10章「Dialogs and Notifications」・11章「Success」
  */
+
+/**
+ * トーストの種類。
+ *
+ * - `success`：保存成功（Success色＋✓。DESIGN.md 11章 Success）
+ * - `info`：操作の可否や仕様を伝える通知（Info色＋ℹ️）。利用者の操作ミスではないため
+ *   Error色（赤）は使わない。責めるトーンにしない方針（docs/concept.md）にも合わせる
+ */
+export type ToastVariant = 'success' | 'info';
 
 interface Toast {
     // 同じ文言を続けて表示したとき（同じ育児行動を連続で記録した場合など）にも
     // <Transition> が「別のトースト」と認識できるよう、表示ごとに一意なキーを振る。
     id: number;
     message: string;
+    variant: ToastVariant;
 }
 
 /**
@@ -49,10 +61,10 @@ export function useToast() {
     /**
      * トーストを表示する。表示中に呼ばれた場合は最新の内容で置き換え、消えるまでの時間も測り直す。
      */
-    function show(message: string): void {
+    function show(message: string, variant: ToastVariant = 'success'): void {
         clearTimer();
 
-        current.value = { id: nextId++, message };
+        current.value = { id: nextId++, message, variant };
 
         dismissTimer = setTimeout(dismiss, TOAST_DURATION_MS);
     }

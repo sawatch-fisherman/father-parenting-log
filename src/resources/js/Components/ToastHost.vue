@@ -12,11 +12,25 @@
 // history stateに永続化されないため、この問題が起きない
 // （`CareLogController@store`の`Inertia::flash()`、`HandleInertiaRequests`参照）。
 import { usePage } from '@inertiajs/vue3';
-import { watch } from 'vue';
-import { useToast } from '@/composables/useToast';
+import { computed, watch } from 'vue';
+import { useToast, type ToastVariant } from '@/composables/useToast';
 
 const page = usePage();
 const { current, show } = useToast();
+
+// 状態を色だけで伝えない（DESIGN.md 12章）。塗りの色とアイコンを必ず対で切り替える。
+// 状態色はいずれも白文字での使用を前提にした明度で設計されている（DESIGN.md 5.3節）。
+const VARIANT_CLASSES: Record<ToastVariant, string> = {
+    success: 'bg-success',
+    info: 'bg-info',
+};
+
+const VARIANT_ICONS: Record<ToastVariant, string> = {
+    success: '✓',
+    info: 'ℹ️',
+};
+
+const variant = computed<ToastVariant>(() => current.value?.variant ?? 'success');
 
 // `page.flash`はグローバルな`flashDataType`宣言をしていないため型上は`Record<string, unknown>`。
 // 実行時に文字列であることを確認してから使う。
@@ -77,10 +91,13 @@ watch(
             <div
                 v-if="current"
                 :key="current.id"
-                class="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl bg-success px-4 py-3 text-body-sm text-white shadow-level-2"
+                :class="[
+                    'pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-white shadow-level-2',
+                    VARIANT_CLASSES[variant],
+                ]"
             >
                 <!-- 状態を色だけで伝えない（DESIGN.md 12章）。アイコンと文言を必ず併記する -->
-                <span aria-hidden="true">✓</span>
+                <span aria-hidden="true">{{ VARIANT_ICONS[variant] }}</span>
                 <span>{{ current.message }}</span>
             </div>
         </Transition>

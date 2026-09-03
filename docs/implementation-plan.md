@@ -181,14 +181,16 @@ flowchart TD
 - **依存**：M4
 - **対応画面/機能**：S13（記録履歴）・S11（ログ編集）／[features.md](features.md)「記録履歴（タイムライン）」／[screens.md](screens.md) `history.index`・`care-logs.edit`・`care-logs.update`・`care-logs.destroy`
 - **タスク**：
-  - [ ] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
-  - [ ] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` と `memo` のみ許可**。育児行動の変更は不可＝削除→再作成。`age_group`／`child_age_group` は編集対象に含めない。**`occurred_at` の範囲バリデーションは `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
-  - [ ] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）。**あわせて「対象の `occurred_at` が『7日前の00:00』より前なら弾く」締めのチェックを `update`・`delete` の両方に入れる**（[decisions.md](decisions.md) §1.3）
-  - [ ] S13 で `occurred_at` が「7日前の00:00」より前の行は「…」を非活性にし、タップ時は理由を伝えるトーストを出す（境界は M4 で用意した共有ヘルパーを参照。[wireframes.md](wireframes.md) S13）
-  - [ ] S3 の保存成功トーストに「取り消す」（Undo）を添え、`DELETE /care-logs/{care_log}` を呼べるようにする（`POST /care-logs` のレスポンスに削除対象の `care_log_id` を含める必要がある）。S3 は4列×2段でタイルが密に並ぶため誤タップが起こりうるが、現状は気付いてもS13まで移動しないと消せない。**誤タップ対策を「連続登録の禁止」ではなく取り消し導線で解く**という方針に対応する（[decisions.md](decisions.md) §1.3「二重送信防止（冪等性）」）。入力欄を増やさず既存操作を短縮する施策のため、入力障壁を増やさない方針とも矛盾しない
-  - [ ] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`memo` がある行は育児行動名の下に2行目として表示**（空なら行を出さない・長文は省略表示）。**`care_logs` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13）、`Pages/CareLogs/Edit.vue`（S11・日時／メモの変更・削除のみ。メモは現在値を初期表示し、空送信で削除できる）
-- **テスト観点**：他人の記録を Policy で弾く、`occurred_at` の更新、`memo` の更新・空送信によるクリア、`care_action_id`／`age_group`／`child_age_group` はリクエストに含めても変更されない、削除、更新先が既存行と衝突→バリデーションエラー、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される、保存直後のトーストの「取り消す」から該当ログが削除される（`POST /care-logs` のレスポンスに `care_log_id` が含まれる）。
+  - [x] `HistoryController@index`（`GET /history`）：日付ごとにグループ化・新しい順
+  - [x] `CareLogController`（`edit` / `update` / `destroy`）、`UpdateCareLogRequest`（**`occurred_at` と `memo` のみ許可**。育児行動の変更は不可＝削除→再作成。`age_group`／`child_age_group` は編集対象に含めない。**`occurred_at` の範囲バリデーション（「7日前の00:00 〜 `now() + 5分`」）は `StoreCareLogRequest` と共通**。[decisions.md](decisions.md) §1.3）
+    - **重複チェック（`Rule::unique`）だけは `StoreCareLogRequest` をそのまま流用しない**：編集中の行を `ignore()` で除外しないと、`occurred_at` を変えずにメモだけ保存した場合に**自分自身と衝突して弾かれる**（`StoreCareLogRequest` の `unique` は `user_id` + `care_action_id` にスコープした `occurred_at` の一意性を見ているため）
+  - [x] `CareLogPolicy`（`update` / `delete`＝所有者チェック。`{care_log}` が URL に ID 付きで現れる唯一のリソースのため Policy 必須。[screens.md](screens.md) 補足）。**あわせて「対象の `occurred_at` が『7日前の00:00』より前なら弾く」締めのチェックを `update`・`delete` の両方に入れる**（[decisions.md](decisions.md) §1.3）。S11 の表示（`edit`＝GET）も `update` の ability で守る（[screens.md](screens.md) Controller構成）
+  - [x] S13 で `occurred_at` が「7日前の00:00」より前の行は「…」を非活性にし、タップ時は理由を伝えるトーストを出す（境界は M4 で用意した共有ヘルパーを参照。[wireframes.md](wireframes.md) S13）
+  - [x] Vue：`Pages/History/Index.vue`（S13・各行「・・・」→S11。**`memo` がある行は育児行動名の下に2行目として表示**（空なら行を出さない・長文は省略表示）。**`care_logs` が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S13）、`Pages/CareLogs/Edit.vue`（S11・日時／メモの変更・削除のみ。メモは現在値を初期表示し、空送信で削除できる）
+- **テスト観点**：他人の記録を Policy で弾く、**`occurred_at` が「7日前の00:00」より前の記録は `edit`／`update`／`destroy` のいずれも Policy で弾かれる**、`occurred_at` の更新、`memo` の更新・空送信によるクリア、`care_action_id`／`age_group`／`child_age_group` はリクエストに含めても変更されない、削除、更新先が既存行と衝突→バリデーションエラー、**`occurred_at` を変えずにメモだけ保存しても自分自身とは衝突しない（`ignore()` が効いている）**、未来日時（`now() + 5分` 超）への変更が拒否される、記録0件時に空状態が表示される。
 - **完了条件**：DoD ＋ 履歴から日時変更・削除ができる。
+- **ブロッカー**：未決 #23（S13 の表示件数上限／ページング方式）。**暫定で全件取得のまま着手可**、方式が決まった時点で `HistoryController@index` と `Pages/History/Index.vue` に足す。
+- **備考**：計画に無い追加が3点ある。①S13 の非活性「…」タップ時のトーストは、`DESIGN.md` 10章が Success/Error の2色しか定義していなかったため **Info バリアント（`#567893`＋ℹ️）を新設**した（利用者の操作ミスではないため Error 色は使わない。`DESIGN.md` 10章に追記済み）。②削除確認モーダル（`DESIGN.md` 10章が挙げる「削除確認」）を `Components/DeleteCareLogModal.vue` として実装した。③`occurred_at` の範囲バリデーション（サーバー：`Concerns\ValidatesOccurredAt`）・メモ空文字の `null` 正規化（サーバー：`Concerns\NormalizesBlankMemo`）・実施時刻入力欄の上限計算（クライアント：`composables/useOccurredAtMaxTime.ts`）を S10／S11 で共有するため、M4 の実装から共通化して切り出した。
 
 ---
 
@@ -199,16 +201,18 @@ flowchart TD
 - **対応画面/機能**：S12（期間別集計）／[features.md](features.md)「ダッシュボード集計」／[screens.md](screens.md) `stats.index`
 - **タスク**：
   - [ ] `StatsController@index`（`GET /stats`）：日/週/月/全期間の集計（Query Scope）＋育児行動ごとの件数内訳。全期間タブ＝累計実績（累計おむつ交換数 等）。自分の `care_logs` を直接集計（Phase 2 の集約テーブルは使わない。[decisions.md](decisions.md) §1.3）
-  - [ ] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋グラフ＋内訳テーブル。**対象期間の記録が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。[wireframes.md](wireframes.md) S12空状態）
+  - [ ] **対象期間の指定（期間送り）**：日/週/月タブは `[ < ] 2026/07/09〜15 [ > ]` の前後送りを持つため、`index` は「タブ種別（日/週/月/全期間）＋基準日」をクエリパラメータで受け取り、その期間の集計を返す。不正・欠落したパラメータは既定タブ＋今日にフォールバックする（**既定タブを「日」と「週」のどちらにするかは着手時にユーザーへ確認する**：[wireframes.md](wireframes.md) S12 はタブ順で「日」が先頭だが、図の例示は週表示になっている）。**全期間タブでは期間送りを表示しない**（[wireframes.md](wireframes.md) S12）
+  - [ ] Vue：`Pages/Stats/Index.vue`（S12・日/週/月/全期間タブ＋**期間送り矢印（全期間タブでは非表示）**＋グラフ＋内訳テーブル。**対象期間の記録が0件の場合は空状態を表示**：「まだ記録がありません」＋S3へのリンクボタン。期間タブ自体は空状態でも表示したままにする。[wireframes.md](wireframes.md) S12空状態）
   - [ ] Phase 2 導線（称号図鑑・全体傾向）は本スライスでは**器のみ or 省略**（[screens.md](screens.md) S12 備考、[decisions.md](decisions.md) §1.3）
-- **テスト観点**：各期間の集計値の正しさ、育児行動別の内訳、対象期間の記録が0件のときに空状態が表示される（グラフ・内訳の代わりに）。
-- **完了条件**：DoD ＋ 4タブの集計が表示される。
+- **テスト観点**：各期間の集計値の正しさ、育児行動別の内訳、**期間送りで前後の期間の集計に切り替わる（日/週/月）**、**全期間タブでは期間送りが出ない**、**不正なタブ種別・基準日が既定値にフォールバックする**、対象期間の記録が0件のときに空状態が表示される（グラフ・内訳の代わりに）。
+- **完了条件**：DoD ＋ 4タブの集計が表示され、日/週/月タブで前後の期間を送れる。
+- **ブロッカー**：未決 #22（グラフ描画ライブラリの選定）。**`StatsController` と内訳テーブルは選定前でも着手可**、グラフ描画のみ選定後。
 
 ---
 
 ### M8 設定（S7, S9）
 
-- **目的**：設定ハブと、常時8アイコンのピン留め入れ替え。ログアウト導線。
+- **目的**：設定ハブと、S3 のピン留め（最大8個）の入れ替え。ログアウト導線。
 - **依存**：M2, M3
 - **対応画面/機能**：S7（設定ハブ）・S9（ピン留め設定）／[features.md](features.md)「設定画面（ハブ）」「育児行動管理（常時8アイコン）」／[screens.md](screens.md) `settings.index`・`settings.slots.edit`・`settings.slots.update`
 - **タスク**：
@@ -230,6 +234,8 @@ flowchart TD
 | 未決 # | 内容 | 影響スライス | 対応 |
 | --- | --- | --- | --- |
 | #11 | 共通のおすすめ初期8個 | M0（config）・M2（slot生成） | 暫定リストで着手可。確定後に `config/totoops.php` を差し替え |
+| #22 | グラフ描画ライブラリの選定 | M7（S12） | `StatsController`・内訳テーブルは先行して着手可。グラフ描画のみ選定後 |
+| #23 | S13 の表示件数上限／ページング方式 | M6（S13） | 暫定で全件取得のまま着手可。方式確定後に `HistoryController@index` へ足す |
 | #15 | トークン有効期限 | （MVP対象外） | Prunable/API 段階で扱う。MVP に影響なし |
 | #5,#8,#13,#14,#16 | 集計匿名化・PWA・通知・公開サイト | Phase 2+ | MVP 範囲外 |
 

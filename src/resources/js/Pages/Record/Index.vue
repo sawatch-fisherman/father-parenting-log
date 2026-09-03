@@ -6,6 +6,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import TitleUnlockedModal from '@/Components/TitleUnlockedModal.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
 
@@ -28,6 +29,7 @@ defineProps<{
 
 const { t } = useTrans();
 const { show } = useToast();
+const { secondaryButtonClass } = useButtonClasses();
 
 // S5（称号獲得モーダル）は`POST /care-logs`のレスポンス（`page.flash.titles`）を受けて
 // 自動表示する（docs/screens.md）。1回の記録で複数の称号を同時獲得しうる
@@ -249,7 +251,7 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
         <div class="mt-6 flex justify-center">
             <Link
                 href="/care-actions/other"
-                class="rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="secondaryButtonClass"
             >
                 {{ t('record.other') }}
             </Link>

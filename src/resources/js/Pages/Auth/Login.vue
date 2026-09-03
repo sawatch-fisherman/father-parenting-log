@@ -2,6 +2,7 @@
 // Inertia::render('Auth/Login')（routes/web.php）が読み込むページコンポーネント
 import { usePage } from '@inertiajs/vue3';
 import LocaleToggle from '@/Components/LocaleToggle.vue'; // 別コンポーネントの読み込み（Bladeのcomponentに近い）
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useTrans } from '@/composables/useTrans'; // 自作の翻訳ヘルパー（PHPの __() のVue版）
 
 // サーバーの HandleInertiaRequests::share() が渡す flash.error の型
@@ -11,6 +12,7 @@ interface SharedProps {
 }
 
 const { t } = useTrans();
+const { primaryButtonClass } = useButtonClasses();
 const page = usePage<SharedProps>();
 </script>
 
@@ -38,7 +40,7 @@ const page = usePage<SharedProps>();
             -->
             <a
                 href="/auth/google/redirect"
-                class="rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="primaryButtonClass"
             >
                 {{ t('auth.google_login') }}
             </a>

@@ -7,6 +7,7 @@
 // `achievementText`（称号ごとに異なる達成内容の一文）だけをサーバーから受け取った値のまま埋め込む
 // （docs/decisions.md §1.3。追加のサーバー往復は発生しない）。
 import { computed, ref } from 'vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useModalFocus } from '@/composables/useModalFocus';
 import { useTrans } from '@/composables/useTrans';
 
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useTrans();
+const { primaryButtonClass, secondaryButtonClass } = useButtonClasses();
 
 const dialogRef = ref<HTMLElement | null>(null);
 useModalFocus(dialogRef, () => emit('close'));
@@ -64,13 +66,13 @@ const xIntentUrl = computed(() => `https://x.com/intent/post?text=${encodeURICom
                     :href="xIntentUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                    :class="['inline-flex min-h-11 items-center justify-center', primaryButtonClass]"
                 >
                     {{ t('titles.share_to_x') }}
                 </a>
                 <button
                     type="button"
-                    class="min-h-11 rounded-xl border border-border bg-transparent px-5 py-3 text-label font-semibold text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                    :class="['min-h-11', secondaryButtonClass]"
                     @click="emit('close')"
                 >
                     {{ t('titles.close') }}

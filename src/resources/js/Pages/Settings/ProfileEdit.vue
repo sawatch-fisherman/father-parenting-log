@@ -3,6 +3,7 @@
 // 閲覧専用画面は別途用意せず、この画面が閲覧を兼ねる。
 import { Link, useForm } from '@inertiajs/vue3';
 import ProfileFormFields from '@/Components/ProfileFormFields.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useTrans } from '@/composables/useTrans';
 
 interface Option {
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useTrans();
+const { primaryButtonClass } = useButtonClasses();
 
 const form = useForm({
     nickname: props.profile.nickname,
@@ -63,7 +65,7 @@ function submit(): void {
 
                 <button
                     type="submit"
-                    class="w-full rounded-xl bg-primary px-5 py-3 text-label font-semibold text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border disabled:text-text-secondary"
+                    :class="['w-full', primaryButtonClass]"
                     :disabled="form.processing"
                 >
                     {{ t('profile.edit_submit') }}
