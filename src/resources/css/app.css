@@ -60,37 +60,51 @@
     /* 8.2 面の境界と階層表現（影は2段階のみ。通常のカードは影なし＝borderのみで表現する） */
     --shadow-level-1: 0 1px 2px rgba(51, 48, 44, 0.06);
     --shadow-level-2: 0 4px 16px rgba(51, 48, 44, 0.12);
+}
 
-    /* 5.5 系列色（チャート用）。S12の積み上げ棒・内訳表の色チップ用で、5.2の14トークンとは
-       役割が別の独立系統（ブランド色・状態色と色相を衝突させない）。index=1〜17は
-       CareActionId定数（1〜17）に、18〜25はPhase2のユーザーカスタム育児行動に対応する
-       （`index = 18 + ((id - CareActionId::CUSTOM_ID_FLOOR) mod 8)`）。Chart.js はCanvas描画で
-       CSS変数を解釈できないため、JS側は getComputedStyle() でこの値を解決してから渡す。 */
-    --color-series-1: #2f934c;
-    --color-series-2: #692f93;
-    --color-series-3: #938a2f;
-    --color-series-4: #2f8793;
-    --color-series-5: #932f65;
-    --color-series-6: #5e932f;
-    --color-series-7: #332f93;
-    --color-series-8: #92932f;
-    --color-series-9: #2f936e;
-    --color-series-10: #8b2f93;
-    --color-series-11: #7e932f;
-    --color-series-12: #2f4993;
-    --color-series-13: #932f71;
-    --color-series-14: #2f933d;
-    --color-series-15: #552f93;
-    --color-series-16: #88932f;
-    --color-series-17: #2f938f;
-    --color-series-18: #932f7b;
-    --color-series-19: #68932f;
-    --color-series-20: #2f3a93;
-    --color-series-21: #932f85;
-    --color-series-22: #2f9359;
-    --color-series-23: #762f93;
-    --color-series-24: #73932f;
-    --color-series-25: #2f9382;
+/*
+ * 5.5 系列色（チャート用）。S12の積み上げ棒・内訳表の色チップ用で、5.2の14トークンとは
+ * 役割が別の独立系統（ブランド色・状態色と色相を衝突させない）。index=1〜17はCareActionId定数
+ * （1〜17）に、18〜25はPhase2のユーザーカスタム育児行動に対応する
+ * （`index = 18 + ((id - CareActionId::CUSTOM_ID_FLOOR) mod 8)`）。Chart.jsはCanvas描画でCSS変数を
+ * 解釈できないため、JS側は getComputedStyle() でこの値を解決してから渡す（useCareActionSeriesColor.ts）。
+ *
+ * あえて `@theme` の外・素の `:root` に置く：`bg-series-1` のようなユーティリティクラスとしては
+ * 一切使わず `var(--color-series-N)` と `getComputedStyle()` でのみ参照するため（`--color-series-${index}`
+ * はJS側でindexから動的に組み立てる文字列で、ソースコード中に静的なリテラルとして現れない）。
+ * Tailwind v4の `@theme` は「そのユーティリティクラスが実際に使われている（＝コード中に静的な文字列
+ * として現れる）」トークンしかCSSに出力しない最適化を行うため、`@theme` に置くと動的参照しかない
+ * 変数はビルド時に消えてしまう（例：`--color-series-2`〜`24` が消え、コメント中にリテラルで
+ * 登場していた `--color-series-1`／`25` だけ生き残った）。`@theme` はユーティリティクラスに
+ * 対応させたいトークン専用で、それ以外の素のCSS変数は `:root` に置くのが公式の使い分け
+ * （https://tailwindcss.com/docs/theme#why-theme-instead-of-root）。
+ */
+:root {
+    --color-series-1: #509431;
+    --color-series-2: #6875d8;
+    --color-series-3: #bd6625;
+    --color-series-4: #2c947a;
+    --color-series-5: #ae5cae;
+    --color-series-6: #987d26;
+    --color-series-7: #2e94d7;
+    --color-series-8: #ca5840;
+    --color-series-9: #278859;
+    --color-series-10: #886acf;
+    --color-series-11: #a97425;
+    --color-series-12: #2a8cb0;
+    --color-series-13: #be5590;
+    --color-series-14: #678f26;
+    --color-series-15: #4e7cd9;
+    --color-series-16: #c85b32;
+    --color-series-17: #2c9572;
+    --color-series-18: #a161bd;
+    --color-series-19: #9d7b26;
+    --color-series-20: #2a8abb;
+    --color-series-21: #c35482;
+    --color-series-22: #399743;
+    --color-series-23: #7571d6;
+    --color-series-24: #c5762a;
+    --color-series-25: #1c6c3a;
 }
 
 @layer base {

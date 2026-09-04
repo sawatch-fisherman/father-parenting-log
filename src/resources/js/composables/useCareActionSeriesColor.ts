@@ -1,7 +1,10 @@
 // S12（期間別集計画面）の積み上げ棒・内訳表で使う「育児行動ごとの固定色」を解決する。
 // DESIGN.md 5.5節の規則どおり、色のindexは`care_action_id`（不変）から求め、`sort_order`は使わない。
-// 実値（25色）は`--color-series-1`〜`--color-series-25`として`src/resources/css/app.css`の`@theme`に
+// 実値（25色）は`--color-series-1`〜`--color-series-25`として`src/resources/css/app.css`の`:root`に
 // 定義済みで、ここではそのCSS変数名を解決するだけに留める（HEX値を二重管理しない）。
+// `@theme`ではなく`:root`に置いている理由：ここでの参照はすべて`index`から動的に組み立てた
+// 変数名であり静的なリテラルとしてソースに現れないため、`@theme`に置くとTailwindの
+// 未使用トークン最適化で消えてしまう（DESIGN.md 5.5節を参照）。
 
 // `App\Support\CareActionId::CUSTOM_ID_FLOOR`と同じ値（標準行の予約域の上限）。
 const CUSTOM_ID_FLOOR = 1000;
