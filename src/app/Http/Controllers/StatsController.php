@@ -9,6 +9,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,7 +28,7 @@ class StatsController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $tab = StatsBucketWindow::resolveTab($request->query('tab'));
+        $tab = StatsBucketWindow::resolveTab($this->queryString($request, 'tab'));
 
         if ($tab === 'all') {
             return Inertia::render('Stats/Index', [
@@ -38,7 +39,7 @@ class StatsController extends Controller
             ]);
         }
 
-        $baseDate = StatsBucketWindow::resolveBaseDate($request->query('base_date'));
+        $baseDate = StatsBucketWindow::resolveBaseDate($this->queryString($request, 'base_date'));
         $window = StatsBucketWindow::resolve($tab, $baseDate);
 
         return Inertia::render('Stats/Index', [
@@ -47,6 +48,21 @@ class StatsController extends Controller
             'period' => $this->buildPeriodStats($user, $window),
             'allTime' => null,
         ]);
+    }
+
+    /**
+     * クエリパラメータを文字列としてのみ受け取る（配列で送られた場合は`null`扱いにする）。
+     *
+     * `?tab[]=day`のように配列で送られると`Request::query()`はPHP配列を返し、`?string`型を
+     * 要求する`StatsBucketWindow`側で`TypeError`になり500になってしまう。「不正な値は既定へ
+     * フォールバックする」という`StatsBucketWindow`の責務を配列入力にも及ばせるため、ここで
+     * スカラー文字列以外を`null`に正規化してから渡す。
+     */
+    private function queryString(Request $request, string $key): ?string
+    {
+        $value = $request->query($key);
+
+        return is_string($value) ? $value : null;
     }
 
     /**
@@ -153,20 +169,18 @@ class StatsController extends Controller
     /**
      * 全期間タブの累計実績（累計記録数・記録日数・月別累計・育児行動ごとの累計）を組み立てる。
      *
-     * 育児行動ごとの累計は多い順に並べる。個人内の育児タスク種別ランキングは「比較しない」原則の
-     * 例外として明示的に許容されている（CLAUDE.md「ブレさせてはいけない線引き」）。
+     * `care_logs`は高頻度で増える前提のログテーブルのため（docs/decisions.md §1.3「ログテーブルと
+     * マスタテーブルの分離」）、全件をモデルとしてハイドレートせずDB側の集約クエリ（`COUNT`・
+     * `GROUP BY`）で済ませる。育児行動ごとの累計は多い順に並べる。個人内の育児タスク種別ランキングは
+     * 「比較しない」原則の例外として明示的に許容されている（CLAUDE.md「ブレさせてはいけない線引き」）。
      *
      * @return array{totalCount: int, totalDays: int, monthlyCumulative: list<array{label: string, cumulativeTotal: int}>, careActionTotals: list<array{careActionId: int, name: string, total: int}>, hasRecords: bool}
      */
     private function buildAllTimeStats(User $user): array
     {
-        /** @var Collection<int, CareLog> $logs */
-        $logs = $user->careLogs()
-            ->with('careAction:id,name,sort_order')
-            ->orderBy('occurred_at')
-            ->get(['care_action_id', 'occurred_at']);
+        $totalCount = $user->careLogs()->count();
 
-        if ($logs->isEmpty()) {
+        if ($totalCount === 0) {
             return [
                 'totalCount' => 0,
                 'totalDays' => 0,
@@ -176,39 +190,80 @@ class StatsController extends Controller
             ];
         }
 
-        $totalDays = $logs
-            ->map(fn (CareLog $log): string => $log->occurred_at->toDateString())
-            ->unique()
-            ->count();
+        $totalDays = (int) $user->careLogs()
+            ->selectRaw('COUNT(DISTINCT DATE(occurred_at)) as total')
+            ->value('total');
 
-        // by-ref変数をCollection::map()の中で累積すると、PHPStanが`$cumulative`の型を
-        // `int|float`まで広げてしまい戻り値の型（int）と一致しなくなるため、素直なforeachで組み立てる。
-        $monthlyTotals = $logs->groupBy(fn (CareLog $log): string => $log->occurred_at->format('Y-m'));
+        $monthlyCumulative = $this->monthlyCumulative($user);
 
-        $cumulative = 0;
-        $monthlyCumulative = [];
-        foreach ($monthlyTotals as $month => $group) {
-            $cumulative += $group->count();
-            $monthlyCumulative[] = ['label' => (string) $month, 'cumulativeTotal' => $cumulative];
-        }
-
-        $careActionTotals = $logs
+        /** @var list<array{careActionId: int, name: string, total: int}> $careActionTotals */
+        $careActionTotals = $user->careLogs()
+            ->selectRaw('care_action_id, COUNT(*) as total')
             ->groupBy('care_action_id')
-            ->map(fn (Collection $group, int $actionId): array => [
-                'careActionId' => $actionId,
-                'name' => (string) $group->first()?->careAction?->name,
-                'total' => $group->count(),
+            ->orderByDesc('total')
+            ->with('careAction:id,name')
+            ->get()
+            ->map(fn (CareLog $row): array => [
+                'careActionId' => $row->care_action_id,
+                'name' => (string) $row->careAction?->name,
+                'total' => (int) $row->getAttribute('total'),
             ])
-            ->sortByDesc('total')
             ->all();
-        $careActionTotals = array_values($careActionTotals);
 
         return [
-            'totalCount' => $logs->count(),
+            'totalCount' => $totalCount,
             'totalDays' => $totalDays,
             'monthlyCumulative' => $monthlyCumulative,
             'careActionTotals' => $careActionTotals,
             'hasRecords' => true,
         ];
+    }
+
+    /**
+     * 記録開始月から今月まで、1か月きざみで累計記録数を積み上げる（wireframes.md S12全期間タブ）。
+     *
+     * 月別件数はDBから記録のある月ぶんだけ返るため、記録の無い月は直前の累計値を持ち越して埋め、
+     * 今月に記録が無くても今月ぶんまでちょうど延ばす（累計折れ線の傾き＝記録のペースを保つため、
+     * 記録の空白期間を軸から欠落させない）。
+     *
+     * @return list<array{label: string, cumulativeTotal: int}>
+     */
+    private function monthlyCumulative(User $user): array
+    {
+        // `DATE_FORMAT()`はMySQL方言でテスト環境（`sqlite`, `:memory:`）には存在しないため、
+        // ドライバごとに正しい構文を出し分ける（PHPStanのliteral-string要求を満たすため、
+        // 動的に組み立てず選択肢をそのままリテラルとして書く）。
+        $selectRaw = match (DB::connection()->getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', occurred_at) as month, COUNT(*) as total",
+            default => "DATE_FORMAT(occurred_at, '%Y-%m') as month, COUNT(*) as total",
+        };
+
+        /** @var Collection<string, int> $monthlyTotals */
+        $monthlyTotals = $user->careLogs()
+            ->selectRaw($selectRaw)
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('total', 'month');
+
+        $firstMonthKey = $monthlyTotals->keys()->first();
+
+        if ($firstMonthKey === null) {
+            return [];
+        }
+
+        $cursor = Carbon::parse($firstMonthKey.'-01')->startOfMonth();
+        $lastMonth = Carbon::now()->startOfMonth();
+
+        $cumulative = 0;
+        $monthlyCumulative = [];
+
+        while ($cursor->lte($lastMonth)) {
+            $key = $cursor->format('Y-m');
+            $cumulative += (int) ($monthlyTotals->get($key) ?? 0);
+            $monthlyCumulative[] = ['label' => $key, 'cumulativeTotal' => $cumulative];
+            $cursor->addMonth();
+        }
+
+        return $monthlyCumulative;
     }
 }

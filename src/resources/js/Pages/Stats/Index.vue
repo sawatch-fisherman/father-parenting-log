@@ -17,8 +17,10 @@ import { useTrans } from '@/composables/useTrans';
 Chart.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip);
 
 // Canvas内だけ別フォントになるのを防ぐ（DESIGN.md 6.1節・implementation-plan.md M7備考）。
-Chart.defaults.font.family =
-    "'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', sans-serif";
+// `Chart.defaults.font.family`（軸ラベル等）と`bucketTotalPlugin`の`ctx.font`（バケット合計ラベル）の
+// 両方でこの定数を使い回し、Canvas内で1箇所だけフォントが食い違う事態を防ぐ。
+const CHART_FONT_FAMILY = "'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', sans-serif";
+Chart.defaults.font.family = CHART_FONT_FAMILY;
 
 type Tab = 'day' | 'week' | 'month' | 'all';
 
@@ -69,7 +71,7 @@ const props = defineProps<{
 }>();
 
 const { t, locale } = useTrans();
-const { primaryButtonClass } = useButtonClasses();
+const { primaryButtonClass, focusRing } = useButtonClasses();
 const { chipStyle, resolvedColor } = useCareActionSeriesColor();
 
 defineOptions({
@@ -83,8 +85,16 @@ const tabs: { key: Tab; labelKey: string }[] = [
     { key: 'all', labelKey: 'stats.tab_all' },
 ];
 
+// タブ切替（日/週/月/全期間）では、粒度だけを変えて同じ時期を見続けられるよう基準日を引き継ぐ
+// （docs/decisions.md §1.3「タブが選ぶのはバケットの粒度であり、1期間の選択ではない」という
+// 読み方に沿う。全期間タブへは基準日の概念が無いため引き継がず、全期間タブから他タブへ戻る
+// ときはbaseDateがnullなのでサーバー側の既定値（今日）にフォールバックする）。
 function tabHref(tab: Tab): string {
-    return `/stats?tab=${tab}`;
+    if (tab === 'all' || !props.baseDate) {
+        return `/stats?tab=${tab}`;
+    }
+
+    return `/stats?tab=${tab}&base_date=${props.baseDate}`;
 }
 
 function periodHref(baseDate: string): string {
@@ -159,7 +169,7 @@ const bucketTotalPlugin = computed<Plugin<'bar'>>(() => ({
 
         ctx.save();
         ctx.fillStyle = textColor;
-        ctx.font = "600 12px 'Noto Sans JP'";
+        ctx.font = `600 12px ${CHART_FONT_FAMILY}`;
         ctx.textAlign = 'center';
 
         meta.data.forEach((bar, index) => {
@@ -196,6 +206,9 @@ const barChartData = computed(() => {
 const barChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    // バケット合計ラベル（bucketTotalPlugin）を棒の6px上に描くため、最大値の棒がY軸の
+    // 目盛最大値と一致する場合でもラベルがキャンバス上端で見切れないよう上に余白を確保する。
+    layout: { padding: { top: 20 } },
     scales: {
         x: { stacked: true, grid: { display: false } },
         y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
@@ -253,6 +266,7 @@ const lineChartOptions = {
                 :aria-selected="item.key === tab"
                 :class="[
                     'flex min-h-11 flex-1 items-center justify-center rounded-lg px-3 text-center text-label font-semibold',
+                    focusRing,
                     item.key === tab ? 'bg-primary-subtle text-primary' : 'text-text-secondary hover:text-primary',
                 ]"
             >
@@ -265,7 +279,10 @@ const lineChartOptions = {
             <Link
                 :href="periodHref(period.prevBaseDate)"
                 :aria-label="t('stats.prev_period')"
-                class="flex min-h-11 min-w-11 items-center justify-center rounded-full text-heading-m text-text-secondary hover:text-primary"
+                :class="[
+                    'flex min-h-11 min-w-11 items-center justify-center rounded-full text-heading-m text-text-secondary hover:text-primary',
+                    focusRing,
+                ]"
             >
                 ‹
             </Link>
@@ -273,7 +290,10 @@ const lineChartOptions = {
             <Link
                 :href="periodHref(period.nextBaseDate)"
                 :aria-label="t('stats.next_period')"
-                class="flex min-h-11 min-w-11 items-center justify-center rounded-full text-heading-m text-text-secondary hover:text-primary"
+                :class="[
+                    'flex min-h-11 min-w-11 items-center justify-center rounded-full text-heading-m text-text-secondary hover:text-primary',
+                    focusRing,
+                ]"
             >
                 ›
             </Link>
@@ -295,28 +315,36 @@ const lineChartOptions = {
                 </div>
 
                 <!-- 内訳マトリクス（育児行動 × 7バケット）。色チップがグラフの凡例を兼ねる（DESIGN.md 5.5節）。
-                     Chart.jsはCanvas描画でスクリーンリーダーが内容を読めないため、この表が代替テキストも兼ねる。 -->
-                <div class="mt-6 overflow-x-auto">
+                     Chart.jsはCanvas描画でスクリーンリーダーが内容を読めないため、この表が代替テキストも兼ねる。
+                     見た目はCSS Gridのままだが、`display: grid`は要素の暗黙のテーブルロールを潰すため、
+                     支援技術に表構造が伝わるよう`role`を明示する（横スクロールはさせない：グラフの7本と
+                     表の7列が常に視覚的に対応している必要があるため。docs/wireframes.md S12）。 -->
+                <div class="mt-6" role="table" :aria-label="t('stats.breakdown_table_label')">
                     <div
+                        role="row"
                         class="grid grid-cols-7 gap-x-1 border-b border-border pb-2 text-body-sm font-semibold text-text-secondary md:grid-cols-[minmax(96px,1fr)_repeat(7,minmax(0,1fr))]"
                     >
-                        <div class="col-span-7 md:col-span-1">{{ t('stats.breakdown_action_header') }}</div>
-                        <div v-for="bucket in period.buckets" :key="bucket.start" class="text-center">
+                        <div role="columnheader" class="col-span-7 md:col-span-1">
+                            {{ t('stats.breakdown_action_header') }}
+                        </div>
+                        <div v-for="bucket in period.buckets" :key="bucket.start" role="columnheader" class="text-center">
                             {{ bucketLabel(bucket) }}
                         </div>
                     </div>
                     <div
                         v-for="row in period.series"
                         :key="row.careActionId"
+                        role="row"
                         class="grid grid-cols-7 items-center gap-x-1 gap-y-1 border-b border-border py-2 last:border-b-0 md:grid-cols-[minmax(96px,1fr)_repeat(7,minmax(0,1fr))]"
                     >
-                        <div class="col-span-7 flex items-center gap-2 md:col-span-1">
-                            <span class="h-1 w-4 shrink-0 rounded-full" :style="chipStyle(row.careActionId)"></span>
+                        <div role="rowheader" class="col-span-7 flex items-center gap-2 md:col-span-1">
+                            <span class="h-4 w-1 shrink-0 rounded-full" :style="chipStyle(row.careActionId)"></span>
                             <span class="text-body-sm font-semibold text-text-primary">{{ row.name }}</span>
                         </div>
                         <div
                             v-for="(count, index) in row.counts"
                             :key="index"
+                            role="cell"
                             class="text-center text-body-sm text-text-secondary"
                         >
                             {{ count }}
@@ -364,7 +392,7 @@ const lineChartOptions = {
                         class="flex items-center justify-between gap-2 border-b border-border py-2 last:border-b-0"
                     >
                         <div class="flex items-center gap-2">
-                            <span class="h-1 w-4 shrink-0 rounded-full" :style="chipStyle(row.careActionId)"></span>
+                            <span class="h-4 w-1 shrink-0 rounded-full" :style="chipStyle(row.careActionId)"></span>
                             <span class="text-body-sm font-semibold text-text-primary">{{ row.name }}</span>
                         </div>
                         <span class="text-body-sm text-text-secondary">{{ t('stats.count_unit', { count: row.total }) }}</span>

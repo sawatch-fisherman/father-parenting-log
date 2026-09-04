@@ -215,7 +215,7 @@ flowchart TD
 - **完了条件**：DoD ＋ 4タブの集計が表示され、日/週/月タブで前後の期間を送れる。
 - **ブロッカー**：**解消済み**。~~[DESIGN.md](../DESIGN.md) 5章の系列色パレットの実値確定~~ → M7実装時に25色を算出・コントラスト検証済み（DESIGN.md 5.5節・`src/resources/css/app.css` の `--color-series-1`〜`25`）。※ 旧ブロッカーの未決 #22（グラフ描画ライブラリ）は Chart.js + vue-chartjs 採用で解消済み。
 - **備考（Chart.js 実装時の注意）**：Chart.js は Canvas 描画のためスクリーンリーダーがグラフの中身を読めない。**内訳マトリクス表が代替テキストの役割を兼ねる**ので、表は必ず残す。あわせて、`Chart.defaults.font.family` に Noto Sans JP を指定しないと Canvas 内だけ別フォントになる／Canvas は CSS 変数を解釈しないため `@theme` トークンは `getComputedStyle` で解決した値を渡す（CLAUDE.md「生の HEX 値を新規コードに書かない」）／`Chart.register()` で使う要素だけ登録する（`registerables` の全登録はしない）／`responsive: true` ＋ `maintainAspectRatio: false` と親要素の高さ指定でモバイル対応する。
-- **備考（実装時に決めた事項）**：①既定タブは着手時にユーザーへ確認し「日」に決定した。②週タブのバケット境界（週の開始曜日）はどのドキュメントにも明記が無かったため、月曜始まり（`Carbon::MONDAY`〜`SUNDAY`）を実装側で採用した（`App\Support\StatsBucketWindow`）。③棒グラフ上のバケット合計回数表示は、`chartjs-plugin-datalabels` 等の追加npm依存を足さず、Chart.jsの`plugins`propに渡す1回限りの描画プラグインとして実装した（decisions.md「Chart.jsコアの標準機能のみ」の範囲内）。④Phase 2導線（称号一覧・みんなの傾向）は本スライスでは器も作らず完全に省略した。
+- **備考（実装時に決めた事項）**：①既定タブは着手時にユーザーへ確認し「日」に決定した。②週タブのバケット境界（週の開始曜日）はどのドキュメントにも明記が無かったため、月曜始まり（`Carbon::MONDAY`〜`SUNDAY`）を実装側で採用した（`App\Support\StatsBucketWindow`）。③棒グラフ上のバケット合計回数表示は、`chartjs-plugin-datalabels` 等の追加npm依存を足さず、Chart.jsの`plugins`propに渡す1回限りの描画プラグインとして実装した（decisions.md「Chart.jsコアの標準機能のみ」の範囲内）。④Phase 2導線（称号一覧・みんなの傾向）は本スライスでは器も作らず完全に省略した。⑤タブ切替（日/週/月/全期間）は基準日（`base_date`）を引き継ぐ（粒度だけを変えて同じ時期を見続けられる。PRレビュー指摘を受けてユーザーへ確認のうえ決定。全期間タブには基準日の概念が無いため引き継がない）。⑥全期間タブの集計はPHP側での全件ロード＋Collection集計ではなく、DB側の集約クエリ（`COUNT`／`GROUP BY`）で行う（PRレビュー指摘を受けて変更。`care_logs`は高頻度で増える前提のログテーブルのため）。
 
 ---
 

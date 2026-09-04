@@ -152,7 +152,9 @@ class StatsControllerTest extends TestCase
      */
     public function test_all_tab_returns_cumulative_stats_without_a_period_window(): void
     {
-        // Arrange
+        // Arrange: 「今月」を固定しないと月別累計が実行時の現在月まで延び、件数の期待値が
+        // テスト実行日に依存してしまうため、基準日を記録の最終月と同じ月に固定する。
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
         $user = User::factory()->create();
         Profile::factory()->create(['user_id' => $user->id]);
         $diaperChange = CareAction::factory()->create(['name' => 'おむつ交換']);
@@ -311,5 +313,139 @@ class StatsControllerTest extends TestCase
 
         // Assert
         $response->assertRedirect(route('login'));
+    }
+
+    /**
+     * 月タブの基準日が月末日（29〜31日）でも、7バケットが連続する7か月（重複・欠落なし）で
+     * 返ることを検証する。
+     *
+     * `Carbon::subMonths()`は既定でオーバーフローするため、「日を保持したまま月を引いてから
+     * 月初へ丸める」実装だと基準日が月末のときにバケットが重複・欠落する（PRレビュー指摘：
+     * `base_date=2024-03-31`で2023-11月・2024-02月が消え、10月・3月が2列ずつ並ぶ）。
+     * 消えるはずだった2月の記録が正しいバケットに入ることまであわせて固定する。
+     */
+    public function test_month_tab_buckets_do_not_overflow_when_base_date_is_a_month_end_day(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create();
+        CareLog::factory()->create(['user_id' => $user->id, 'care_action_id' => $careAction->id, 'occurred_at' => '2024-02-15 08:00:00']);
+
+        // Act
+        $response = $this->actingAs($user)->get('/stats?tab=month&base_date=2024-03-31');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('period.buckets.0.start', '2023-09-01')
+            ->where('period.buckets.1.start', '2023-10-01')
+            ->where('period.buckets.2.start', '2023-11-01')
+            ->where('period.buckets.3.start', '2023-12-01')
+            ->where('period.buckets.4.start', '2024-01-01')
+            ->where('period.buckets.5.start', '2024-02-01')
+            ->where('period.buckets.5.end', '2024-02-29')
+            ->where('period.buckets.6.start', '2024-03-01')
+            ->where('period.buckets.5.total', 1)
+            ->where('period.prevBaseDate', '2023-08-01')
+            ->where('period.nextBaseDate', '2024-10-01'),
+        );
+    }
+
+    /**
+     * 月タブの期間送りが、月初を起点に往復すると元の窓に一致することを検証する
+     * （`次へ`で進んだ先の`前へ`が出発点と同じ月になる）。
+     */
+    public function test_month_tab_period_navigation_round_trips(): void
+    {
+        // Arrange
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act
+        $forward = $this->actingAs($user)->get('/stats?tab=month&base_date=2024-03-01');
+
+        // Assert
+        $forward->assertInertia(fn (AssertableInertia $page) => $page->where('period.nextBaseDate', '2024-10-01'));
+
+        // Act
+        $backward = $this->actingAs($user)->get('/stats?tab=month&base_date=2024-10-01');
+
+        // Assert
+        $backward->assertInertia(fn (AssertableInertia $page) => $page->where('period.prevBaseDate', '2024-03-01'));
+    }
+
+    /**
+     * 全期間タブの月別累計が、記録の無い月を直前の累計値で埋め、今月に記録が無くても
+     * 今月ぶんまで延ばすことを検証する（docs/wireframes.md S12「記録開始月〜今月の月別累計」）。
+     */
+    public function test_all_tab_monthly_cumulative_fills_gap_months_and_extends_to_the_current_month(): void
+    {
+        // Arrange: 2月は記録が無い月、3月（今月）も記録が無い状態を固定する
+        $this->travelTo(Carbon::parse('2024-03-15 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+        $careAction = CareAction::factory()->create();
+        CareLog::factory()->create(['user_id' => $user->id, 'care_action_id' => $careAction->id, 'occurred_at' => '2024-01-05 08:00:00']);
+        CareLog::factory()->create(['user_id' => $user->id, 'care_action_id' => $careAction->id, 'occurred_at' => '2024-01-20 08:00:00']);
+
+        // Act
+        $response = $this->actingAs($user)->get('/stats?tab=all');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('allTime.monthlyCumulative', 3)
+            ->where('allTime.monthlyCumulative.0.label', '2024-01')
+            ->where('allTime.monthlyCumulative.0.cumulativeTotal', 2)
+            ->where('allTime.monthlyCumulative.1.label', '2024-02')
+            ->where('allTime.monthlyCumulative.1.cumulativeTotal', 2)
+            ->where('allTime.monthlyCumulative.2.label', '2024-03')
+            ->where('allTime.monthlyCumulative.2.cumulativeTotal', 2)
+            ->where('allTime.totalCount', 2),
+        );
+    }
+
+    /**
+     * 暦として無効な基準日（"2024-02-30"のように`Y-m-d`形式には一致するが実在しない日付）が
+     * 今日にフォールバックすることを検証する。
+     *
+     * `Carbon::createFromFormat()`はこの種の値を例外にせず翌月へ繰り上げて解釈するため、
+     * フォーマット不一致（`InvalidFormatException`）とは別経路でのフォールバックを固定する。
+     */
+    public function test_calendar_invalid_base_date_falls_back_to_today(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act
+        $response = $this->actingAs($user)->get('/stats?tab=week&base_date=2024-02-30');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('baseDate', '2024-01-10'));
+    }
+
+    /**
+     * クエリパラメータが配列で送られても（`?tab[]=day`）500にならず既定値へフォールバックすることを検証する。
+     *
+     * `Request::query()`は配列入力をそのまま返すため、`?string`型のみを想定した受け側に直接渡すと
+     * `TypeError`になる（PRレビュー指摘）。
+     */
+    public function test_array_query_parameters_fall_back_to_defaults_instead_of_erroring(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act
+        $response = $this->actingAs($user)->get('/stats?tab[]=day&base_date[]=2024-01-01');
+
+        // Assert
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('tab', 'day')
+            ->where('baseDate', '2024-01-10'),
+        );
     }
 }

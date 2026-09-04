@@ -76,8 +76,9 @@ final class StatsBucketWindow
             ],
             'month' => [
                 'buckets' => self::monthlyBuckets($baseDate),
-                'prevBaseDate' => $baseDate->copy()->subMonths(self::BUCKET_COUNT),
-                'nextBaseDate' => $baseDate->copy()->addMonths(self::BUCKET_COUNT),
+                // 月初（day=1）へ丸めてから加減算する（後述の月オーバーフロー対策と同じ理由）。
+                'prevBaseDate' => $baseDate->copy()->startOfMonth()->subMonths(self::BUCKET_COUNT),
+                'nextBaseDate' => $baseDate->copy()->startOfMonth()->addMonths(self::BUCKET_COUNT),
             ],
             default => [
                 'buckets' => self::dailyBuckets($baseDate),
@@ -124,14 +125,20 @@ final class StatsBucketWindow
     /**
      * 基準日が属する月を含む、過去6か月分とあわせて7個（古い→新しい順）のバケットを返す。
      *
+     * `startOfMonth()`を先に呼んでから`subMonths()`する順序が重要。Carbonの`subMonths()`は
+     * 既定でオーバーフローするため、日を保持したまま（例：31日）月を引くと、引いた先の月に
+     * その日が存在しない場合（例：4月31日は無い）翌月へ繰り上がってしまう。基準日が29〜31日の
+     * ときにこの逆順（先に引いてから丸める）で書くと、バケットが重複・欠落する不具合になる。
+     *
      * @return list<array{start: Carbon, end: Carbon}>
      */
     private static function monthlyBuckets(Carbon $baseDate): array
     {
         $buckets = [];
+        $baseMonthStart = $baseDate->copy()->startOfMonth();
 
         for ($i = self::BUCKET_COUNT - 1; $i >= 0; $i--) {
-            $start = $baseDate->copy()->subMonths($i)->startOfMonth();
+            $start = $baseMonthStart->copy()->subMonths($i);
             $buckets[] = ['start' => $start, 'end' => $start->copy()->endOfMonth()];
         }
 
