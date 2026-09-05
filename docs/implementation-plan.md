@@ -243,7 +243,6 @@ flowchart TD
 | 未決 # | 内容 | 影響スライス | 対応 |
 | --- | --- | --- | --- |
 | #11 | 共通のおすすめ初期8個 | M0（config）・M2（slot生成） | 暫定リストで着手可。確定後に `config/totoops.php` を差し替え |
-| ~~#22~~ | ~~グラフ描画ライブラリの選定~~ | ~~M7（S12）~~ | **解決済み**：Chart.js + vue-chartjs を採用（[decisions.md](decisions.md) §1.3）。M7 の残ブロッカーは [DESIGN.md](../DESIGN.md) 系列色の実値確定に置き換わった |
 | #23 | S13 の表示件数上限／ページング方式 | M6（S13） | 暫定で全件取得のまま着手可。方式確定後に `HistoryController@index` へ足す |
 | #15 | トークン有効期限 | （MVP対象外） | Prunable/API 段階で扱う。MVP に影響なし |
 | #5,#8,#13,#14,#16 | 集計匿名化・PWA・通知・公開サイト | Phase 2+ | MVP 範囲外 |
