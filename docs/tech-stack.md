@@ -10,6 +10,7 @@
 | PHP | 8.5.8 |
 | Laravel Framework | 13.19.0 |
 | Inertia (inertiajs/inertia-laravel) | 3.1.1 |
+| Laravel Socialite | 5.29.0 |
 
 ## フロントエンド
 
