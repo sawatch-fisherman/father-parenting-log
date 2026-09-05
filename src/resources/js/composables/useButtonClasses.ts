@@ -26,5 +26,8 @@ export function useButtonClasses() {
     /** Destructive：記録削除など取り消し不能な操作。塗りにはせず枠線と文字色をError色にする。 */
     const destructiveButtonClass = `${variantBase} ${focusRing} border border-error bg-transparent text-error disabled:cursor-not-allowed disabled:border-border disabled:text-text-secondary`;
 
-    return { primaryButtonClass, secondaryButtonClass, destructiveButtonClass };
+    // ボタン以外の対話要素（S12のタブ・期間送り矢印など）でもDESIGN.md 11章のフォーカスリングを
+    // 揃えられるよう、単独でも参照できるようにエクスポートする（AppLayout.vueの`focusRingClass`
+    // と同じ値。値の追従漏れを防ぐため、以後はここを唯一のソースにする）。
+    return { primaryButtonClass, secondaryButtonClass, destructiveButtonClass, focusRing };
 }

@@ -10,6 +10,7 @@
 | PHP | 8.5.8 |
 | Laravel Framework | 13.19.0 |
 | Inertia (inertiajs/inertia-laravel) | 3.1.1 |
+| Laravel Socialite | 5.29.0 |
 
 ## フロントエンド
 
@@ -22,6 +23,8 @@
 | Tailwind CSS | 4.3.2 |
 | Vite | 8.1.4 |
 | laravel-vite-plugin | 3.1.0 |
+| Chart.js | 4.5.1 |
+| vue-chartjs | 5.3.4 |
 
 ## データベース・インフラ（Docker）
 

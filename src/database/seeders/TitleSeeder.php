@@ -10,7 +10,7 @@ use App\Support\TitleId;
 use Illuminate\Database\Seeder;
 
 /**
- * TotoOps 標準の称号マスタ90行を投入する。
+ * TotoOps 標準の称号マスタ93行を投入する。
  *
  * 同一性キーには`name`ではなく{@see TitleId}の固定IDを使う（`titles.name`は非ユニーク列で、
  * 称号名を修正して再シードすると既存行が更新されず重複行が増えてしまうため）。
@@ -25,8 +25,9 @@ use Illuminate\Database\Seeder;
  * Streak系は全体版が 7/30/90日、育児行動別版が 3/7/30日
  * （同じ等級でも育児行動別のほうが難度が高いため1段階易しくする）。
  *
- * 育児行動別Streakは「毎日発生しうる育児行動」11個のみを対象とする。爪切りや発熱・看病のように
- * 連続日数が原理的に伸びない育児行動には設定しない。
+ * 育児行動別Streakは「毎日発生しうる育児行動」12個のみを対象とする。爪切り・鼻水ケア・夜泣き対応・
+ * 外出中の抱っこ・発熱看病のように、子どもの状態や外出の有無に発生が左右され連続日数が原理的に
+ * 伸びない育児行動には設定しない。
  *
  * 配列の並び順がそのまま`sort_order`（＝称号の提示順）になる。並び順のルールは
  * 「**対象範囲（全体→育児行動別）→ 条件種別（Count→Streak）→ 育児行動の表示順 → 等級（銅→銀→金）**」
@@ -120,6 +121,9 @@ class TitleSeeder extends Seeder
             [TitleId::READ_ALOUD_STREAK_TIER1, CareActionId::READ_ALOUD, '3日連続読み聞かせ', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::READ_ALOUD_STREAK_TIER2, CareActionId::READ_ALOUD, '1週間連続読み聞かせ', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::READ_ALOUD_STREAK_TIER3, CareActionId::READ_ALOUD, '1ヶ月連続読み聞かせ', TitleGrade::Gold, TitleConditionType::Streak, 30],
+            [TitleId::INDOOR_PLAY_STREAK_TIER1, CareActionId::INDOOR_PLAY, '3日連続室内遊び', TitleGrade::Bronze, TitleConditionType::Streak, 3],
+            [TitleId::INDOOR_PLAY_STREAK_TIER2, CareActionId::INDOOR_PLAY, '1週間連続室内遊び', TitleGrade::Silver, TitleConditionType::Streak, 7],
+            [TitleId::INDOOR_PLAY_STREAK_TIER3, CareActionId::INDOOR_PLAY, '1ヶ月連続室内遊び', TitleGrade::Gold, TitleConditionType::Streak, 30],
             [TitleId::BATH_STREAK_TIER1, CareActionId::BATH, '3日連続お風呂', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::BATH_STREAK_TIER2, CareActionId::BATH, '1週間連続お風呂', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::BATH_STREAK_TIER3, CareActionId::BATH, '1ヶ月連続お風呂', TitleGrade::Gold, TitleConditionType::Streak, 30],

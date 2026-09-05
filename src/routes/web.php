@@ -8,6 +8,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordController;
+use App\Http\Controllers\StatsController;
 use App\Http\Middleware\EnsureProfileIsComplete;
 use App\Http\Middleware\RedirectIfProfileIsComplete;
 use Illuminate\Support\Facades\Route;
@@ -45,8 +46,7 @@ Route::middleware('auth')->group(function () {
         // M8 の SettingsController@index に置き換わる暫定プレースホルダ
         Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings.index');
 
-        // M7 の StatsController@index に置き換わる暫定プレースホルダ
-        Route::get('/stats', fn () => Inertia::render('Stats/Index'))->name('stats.index');
+        Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
     });
 });
 
