@@ -72,8 +72,8 @@ class StatsController extends Controller
      * （docs/decisions.md §1.3「色は care_action_id に固定割り当てする」。並び順そのものは色の
      * 決定には使わないが、他画面と揃えるため一覧の並びだけ `sort_order` を踏襲する）。
      *
-     * @param  array{buckets: list<array{start: Carbon, end: Carbon}>, prevBaseDate: Carbon, nextBaseDate: Carbon}  $window
-     * @return array{buckets: list<array{start: string, end: string, total: int}>, series: list<array{careActionId: int, name: string, counts: list<int>}>, hasRecords: bool, prevBaseDate: string, nextBaseDate: string}
+     * @param  array{buckets: list<array{start: Carbon, end: Carbon}>, prevBaseDate: Carbon, nextBaseDate: Carbon, atLatestPeriod: bool}  $window
+     * @return array{buckets: list<array{start: string, end: string, total: int}>, series: list<array{careActionId: int, name: string, counts: list<int>}>, hasRecords: bool, prevBaseDate: string, nextBaseDate: string, atLatestPeriod: bool}
      */
     private function buildPeriodStats(User $user, array $window): array
     {
@@ -144,6 +144,7 @@ class StatsController extends Controller
             'hasRecords' => $logs->isNotEmpty(),
             'prevBaseDate' => $window['prevBaseDate']->toDateString(),
             'nextBaseDate' => $window['nextBaseDate']->toDateString(),
+            'atLatestPeriod' => $window['atLatestPeriod'],
         ];
     }
 

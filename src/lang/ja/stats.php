@@ -10,6 +10,9 @@ return [
 
     'prev_period' => '前の期間',
     'next_period' => '次の期間',
+    // 育児ログは未来日時に存在しえないため、最新の期間より先へは進めない（非活性の「次」を
+    // タップしたときのトースト）。責める文面にしない（docs/wireframes.md S13の考え方を踏襲）。
+    'next_period_locked_toast' => 'これより先の期間はまだ記録できません',
 
     // 内訳マトリクス表・累計リスト共通の見出し（DESIGN.md 5.5節：色チップ＋育児行動名で凡例を兼ねる）。
     'breakdown_action_header' => '育児行動',

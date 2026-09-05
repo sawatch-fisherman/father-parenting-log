@@ -448,4 +448,51 @@ class StatsControllerTest extends TestCase
             ->where('baseDate', '2024-01-10'),
         );
     }
+
+    /**
+     * 未来日を`base_date`に指定しても今日に丸められることを検証する。
+     *
+     * 育児ログは未来日時に存在しえないため（`occurred_at`は現在+5分が上限）、未来の基準日を
+     * そのまま受け入れると必ず空の期間を表示することになる。URL直接指定分もここで防ぐ。
+     */
+    public function test_future_base_date_is_clamped_to_today(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act
+        $response = $this->actingAs($user)->get('/stats?tab=day&base_date=2024-02-01');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('baseDate', '2024-01-10')
+            ->where('period.buckets.6.start', '2024-01-10'),
+        );
+    }
+
+    /**
+     * 直近バケットが今日を含む期間では`atLatestPeriod`が`true`になり、
+     * それより過去の期間では`false`になることを検証する（「次」の期間送りを非活性にする材料）。
+     */
+    public function test_at_latest_period_flag_reflects_whether_the_window_reaches_today(): void
+    {
+        // Arrange
+        $this->travelTo(Carbon::parse('2024-01-10 12:00:00'));
+        $user = User::factory()->create();
+        Profile::factory()->create(['user_id' => $user->id]);
+
+        // Act: 今日を含む窓（既定の基準日＝今日）
+        $latest = $this->actingAs($user)->get('/stats?tab=day');
+
+        // Assert
+        $latest->assertInertia(fn (AssertableInertia $page) => $page->where('period.atLatestPeriod', true));
+
+        // Act: 7日ぶん過去にずらした窓（今日を含まない）
+        $past = $this->actingAs($user)->get('/stats?tab=day&base_date=2024-01-03');
+
+        // Assert
+        $past->assertInertia(fn (AssertableInertia $page) => $page->where('period.atLatestPeriod', false));
+    }
 }

@@ -36,7 +36,7 @@ final class StatsBucketWindow
     }
 
     /**
-     * クエリパラメータの基準日を正規化する。不正・欠落した値は今日にフォールバックする。
+     * クエリパラメータの基準日を正規化する。不正・欠落した値、および未来日は今日にフォールバックする。
      */
     public static function resolveBaseDate(?string $baseDate): Carbon
     {
@@ -57,18 +57,23 @@ final class StatsBucketWindow
             return Carbon::today();
         }
 
-        return $parsed->startOfDay();
+        $resolved = $parsed->startOfDay();
+
+        // 育児ログは未来日時には存在しえない（`occurred_at`は現在+5分が上限。docs/decisions.md §1.3）
+        // ため、未来の基準日を許すと必ず空の期間を表示することになる。期間送りボタンの「次」を
+        // 未来方向に進めなくする仕組みの一部として、URL直接指定分もここでまとめて今日に丸める。
+        return $resolved->greaterThan(Carbon::today()) ? Carbon::today() : $resolved;
     }
 
     /**
      * 指定タブ・基準日から7バケットぶんの日付範囲と、期間送り（前後）の基準日を算出する。
      * タブは `day`／`week`／`month` のみを受け付ける（`all` タブはバケット構造を持たない）。
      *
-     * @return array{buckets: list<array{start: Carbon, end: Carbon}>, prevBaseDate: Carbon, nextBaseDate: Carbon}
+     * @return array{buckets: list<array{start: Carbon, end: Carbon}>, prevBaseDate: Carbon, nextBaseDate: Carbon, atLatestPeriod: bool}
      */
     public static function resolve(string $tab, Carbon $baseDate): array
     {
-        return match ($tab) {
+        $window = match ($tab) {
             'week' => [
                 'buckets' => self::weeklyBuckets($baseDate),
                 'prevBaseDate' => $baseDate->copy()->subWeeks(self::BUCKET_COUNT),
@@ -86,6 +91,14 @@ final class StatsBucketWindow
                 'nextBaseDate' => $baseDate->copy()->addDays(self::BUCKET_COUNT),
             ],
         };
+
+        // 育児ログは未来日時に存在しえないため（`resolveBaseDate()`と同じ理由）、直近バケット
+        // （必ず基準日を含む＝インデックス6）が既に今日を含んでいれば、その先は必ず空になる。
+        // このときは「次」の期間送りを止める（クライアント側で送りボタンを非活性にする材料）。
+        $latestBucket = $window['buckets'][self::BUCKET_COUNT - 1];
+        $window['atLatestPeriod'] = Carbon::today()->between($latestBucket['start'], $latestBucket['end']);
+
+        return $window;
     }
 
     /**

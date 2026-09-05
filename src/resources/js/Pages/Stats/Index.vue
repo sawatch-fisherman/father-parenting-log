@@ -9,6 +9,7 @@ import { Bar, Line } from 'vue-chartjs';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useCareActionSeriesColor } from '@/composables/useCareActionSeriesColor';
+import { useToast } from '@/composables/useToast';
 import { useTrans } from '@/composables/useTrans';
 
 // Chart.jsはコアの標準機能のみで描く（docs/decisions.md §1.3）。`registerables`（全要素）は登録せず、
@@ -42,6 +43,9 @@ interface PeriodStats {
     hasRecords: boolean;
     prevBaseDate: string;
     nextBaseDate: string;
+    // 直近バケットが既に今日を含む＝これより先は育児ログが存在しえない期間（`StatsBucketWindow::resolve()`）。
+    // trueのとき「次」の期間送りを非活性にする。
+    atLatestPeriod: boolean;
 }
 
 interface AllTimeMonthly {
@@ -71,8 +75,15 @@ const props = defineProps<{
 }>();
 
 const { t, locale } = useTrans();
+const { show } = useToast();
 const { primaryButtonClass, focusRing } = useButtonClasses();
 const { chipStyle, resolvedColor } = useCareActionSeriesColor();
+
+// 非活性の「次」ボタンは`disabled`ではなく`aria-disabled`にする（History/Index.vueと同じ理由：
+// `disabled`だとクリックイベントが発火せず、非活性の理由を伝えるトーストを出せなくなるため）。
+function notifyAtLatestPeriod(): void {
+    show(t('stats.next_period_locked_toast'), 'info');
+}
 
 defineOptions({
     layout: [AppLayout, { active: 'stats' }],
@@ -288,6 +299,7 @@ const lineChartOptions = {
             </Link>
             <span class="text-body font-semibold text-text-primary">{{ rangeLabel }}</span>
             <Link
+                v-if="!period.atLatestPeriod"
                 :href="periodHref(period.nextBaseDate)"
                 :aria-label="t('stats.next_period')"
                 :class="[
@@ -297,6 +309,21 @@ const lineChartOptions = {
             >
                 ›
             </Link>
+            <!-- 育児ログは未来日時に存在しえないため、最新期間より先へは進めない
+                 （`disabled`にせず`aria-disabled`にする理由はnotifyAtLatestPeriod()参照）。 -->
+            <button
+                v-else
+                type="button"
+                aria-disabled="true"
+                :aria-label="t('stats.next_period')"
+                :class="[
+                    'flex min-h-11 min-w-11 cursor-not-allowed items-center justify-center rounded-full text-heading-m text-text-secondary',
+                    focusRing,
+                ]"
+                @click="notifyAtLatestPeriod"
+            >
+                ›
+            </button>
         </div>
 
         <!-- 日/週/月タブ -->
