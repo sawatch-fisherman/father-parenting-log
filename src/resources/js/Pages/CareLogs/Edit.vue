@@ -31,7 +31,7 @@ const props = defineProps<{
 
 const { t } = useTrans();
 const { labelClass } = useFormFieldClasses();
-const { primaryButtonClass, destructiveButtonClass } = useButtonClasses();
+const { primaryButtonClass, destructiveButtonClass, focusRing } = useButtonClasses();
 
 // 実施日・実施時刻は個別の入力欄を持つが、サーバーへは結合済みの `occurred_at` として送る
 // （`form.errors.occurred_at` をそのまま使えるようにするため。入力欄はS10と共通の
@@ -74,7 +74,7 @@ function destroy(): void {
         <div class="px-4 pt-6">
             <Link
                 href="/history"
-                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="['inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary', focusRing]"
             >
                 {{ t('care_logs.back') }}
             </Link>

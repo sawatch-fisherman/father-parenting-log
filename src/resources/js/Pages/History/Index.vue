@@ -37,7 +37,7 @@ const props = defineProps<{
 
 const { t, locale } = useTrans();
 const { show } = useToast();
-const { primaryButtonClass } = useButtonClasses();
+const { primaryButtonClass, focusRing } = useButtonClasses();
 
 defineOptions({
     layout: [AppLayout, { active: 'history' }],
@@ -102,7 +102,10 @@ function notifyLocked(): void {
                             v-if="log.editable"
                             :href="`/care-logs/${log.id}/edit`"
                             :aria-label="t('history.edit_menu', { time: log.time, name: log.careActionName ?? '' })"
-                            class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-heading-m text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                            :class="[
+                                'flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-heading-m text-text-primary',
+                                focusRing,
+                            ]"
                         >
                             <span aria-hidden="true">…</span>
                         </Link>
@@ -111,7 +114,10 @@ function notifyLocked(): void {
                             type="button"
                             aria-disabled="true"
                             :aria-label="t('history.locked_menu', { time: log.time, name: log.careActionName ?? '' })"
-                            class="flex min-h-11 min-w-11 shrink-0 cursor-not-allowed items-center justify-center rounded-md text-heading-m text-text-secondary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                            :class="[
+                                'flex min-h-11 min-w-11 shrink-0 cursor-not-allowed items-center justify-center rounded-md text-heading-m text-text-secondary',
+                                focusRing,
+                            ]"
                             @click="notifyLocked"
                         >
                             <span aria-hidden="true">…</span>

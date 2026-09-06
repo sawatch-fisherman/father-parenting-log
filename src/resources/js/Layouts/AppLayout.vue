@@ -7,6 +7,7 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ToastHost from '@/Components/ToastHost.vue';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useTrans } from '@/composables/useTrans';
 
 type NavKey = 'record' | 'history' | 'stats' | 'settings';
@@ -17,6 +18,9 @@ const props = defineProps<{
 
 const { t } = useTrans();
 
+// フォーカスリング（DESIGN.md 11章 Focus）。値は `useButtonClasses` に集約されている。
+const { focusRing } = useButtonClasses();
+
 // computed にしているのは、S7（設定画面）にロケール切替トグルが置かれるM8以降、
 // ロケール変更後もこのレイアウトが再マウントされずラベルだけ古い言語のまま残ることを防ぐため
 // （永続レイアウトのためインスタンスがページ遷移をまたいで維持される＝script setup直下の評価は1回きり）。
@@ -26,9 +30,6 @@ const navItems = computed(() => [
     { key: 'stats' as const, label: t('nav.stats'), href: '/stats' },
     { key: 'settings' as const, label: t('nav.settings'), href: '/settings' },
 ]);
-
-// フォーカスリング（DESIGN.md 11章 Focus）。既存コンポーネント（LocaleToggle等）と同じ組み合わせ。
-const focusRingClass = 'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25';
 </script>
 
 <template>
@@ -42,7 +43,7 @@ const focusRingClass = 'focus-visible:outline-none focus-visible:ring-[3px] focu
                         :aria-current="item.key === props.active ? 'page' : undefined"
                         :class="[
                             'block rounded-md px-4 py-3 text-label font-semibold',
-                            focusRingClass,
+                            focusRing,
                             item.key === props.active ? 'bg-primary-subtle text-primary' : 'text-text-secondary hover:text-primary',
                         ]"
                     >
@@ -68,7 +69,7 @@ const focusRingClass = 'focus-visible:outline-none focus-visible:ring-[3px] focu
                 :aria-current="item.key === props.active ? 'page' : undefined"
                 :class="[
                     'flex min-w-11 flex-1 flex-col items-center justify-center text-label font-semibold',
-                    focusRingClass,
+                    focusRing,
                     item.key === props.active ? 'text-primary' : 'text-text-secondary',
                 ]"
             >

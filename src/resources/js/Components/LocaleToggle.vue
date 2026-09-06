@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Composition API: このファイル自体が1つのコンポーネントの定義（PHPのクラスに近い）
 import { router, usePage } from '@inertiajs/vue3';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 
 // サーバーの HandleInertiaRequests::share() が渡す共有propsの型
 interface SharedProps {
@@ -20,9 +21,11 @@ function setLocale(locale: string): void {
     router.post('/locale', { locale }, { preserveScroll: true });
 }
 
+// フォーカスリング（DESIGN.md 11章 Focus）は `useButtonClasses` の値をそのまま使う。
+const { focusRing } = useButtonClasses();
+
 // min-h-11/min-w-11 は DESIGN.md 9章のタップ領域44×44pxを満たすための下限。
-const buttonClass =
-    'flex min-h-11 min-w-11 items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25';
+const buttonClass = `flex min-h-11 min-w-11 items-center justify-center font-semibold ${focusRing}`;
 
 // 選択中はブランド色で示す（DESIGN.md 5.2 の Primary「選択状態」）。
 const activeClass = 'text-primary';

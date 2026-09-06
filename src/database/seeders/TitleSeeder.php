@@ -108,7 +108,7 @@ class TitleSeeder extends Seeder
             [TitleId::SICK_CARE_COUNT_TIER1, CareActionId::SICK_CARE, '看病見習い', TitleGrade::Bronze, TitleConditionType::Count, 10],
             [TitleId::SICK_CARE_COUNT_TIER2, CareActionId::SICK_CARE, '看病職人', TitleGrade::Silver, TitleConditionType::Count, 30],
             [TitleId::SICK_CARE_COUNT_TIER3, CareActionId::SICK_CARE, '看病名人', TitleGrade::Gold, TitleConditionType::Count, 100],
-            // Streak（育児行動別）— 毎日発生しうる11行動のみ。育児行動の表示順。
+            // Streak（育児行動別）— 毎日発生しうる12行動のみ。育児行動の表示順。
             [TitleId::DIAPER_CHANGE_STREAK_TIER1, CareActionId::DIAPER_CHANGE, '3日連続おむつ交換', TitleGrade::Bronze, TitleConditionType::Streak, 3],
             [TitleId::DIAPER_CHANGE_STREAK_TIER2, CareActionId::DIAPER_CHANGE, '1週間連続おむつ交換', TitleGrade::Silver, TitleConditionType::Streak, 7],
             [TitleId::DIAPER_CHANGE_STREAK_TIER3, CareActionId::DIAPER_CHANGE, '1ヶ月連続おむつ交換', TitleGrade::Gold, TitleConditionType::Streak, 30],

@@ -16,7 +16,6 @@ return [
 
     // 内訳マトリクス表・累計リスト共通の見出し（DESIGN.md 5.5節：色チップ＋育児行動名で凡例を兼ねる）。
     'breakdown_action_header' => '育児行動',
-    'breakdown_total_label' => '合計',
     // 内訳マトリクスの`role="table"`ラッパに付けるアクセシブルな名前（スクリーンリーダー向け）。
     'breakdown_table_label' => '育児行動ごとの記録内訳',
 

@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useTrans();
-const { primaryButtonClass } = useButtonClasses();
+const { primaryButtonClass, focusRing } = useButtonClasses();
 
 const form = useForm({
     nickname: props.profile.nickname,
@@ -46,7 +46,7 @@ function submit(): void {
             <!-- 補助的な操作なので Secondary の文字色を使う（DESIGN.md 5.2「控えめなラベル」） -->
             <Link
                 href="/"
-                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="['inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary', focusRing]"
             >
                 {{ t('profile.back') }}
             </Link>
