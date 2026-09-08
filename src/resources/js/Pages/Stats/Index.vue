@@ -25,18 +25,21 @@ Chart.defaults.font.family = CHART_FONT_FAMILY;
 
 type Tab = 'day' | 'week' | 'month' | 'all';
 
+// 日/週/月タブの棒グラフ1本（1バケット）分のデータ。
 interface PeriodBucket {
     start: string;
     end: string;
     total: number;
 }
 
+// 日/週/月タブの内訳1行（育児行動1つ）分のデータ。
 interface PeriodSeries {
     careActionId: number;
     name: string;
     counts: number[];
 }
 
+// 日/週/月タブ（`StatsController::buildPeriodStats()`）が返すデータ全体。
 interface PeriodStats {
     buckets: PeriodBucket[];
     series: PeriodSeries[];
@@ -48,17 +51,20 @@ interface PeriodStats {
     atLatestPeriod: boolean;
 }
 
+// 全期間タブの累計折れ線グラフの1点（1か月）分のデータ。
 interface AllTimeMonthly {
     label: string;
     cumulativeTotal: number;
 }
 
+// 全期間タブの育児行動別累計ランキング1行分のデータ。
 interface AllTimeActionTotal {
     careActionId: number;
     name: string;
     total: number;
 }
 
+// 全期間タブ（`StatsController::buildAllTimeStats()`）が返すデータ全体。
 interface AllTimeStats {
     totalCount: number;
     totalDays: number;
