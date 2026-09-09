@@ -57,8 +57,7 @@ class ProfileController extends Controller
             // `RedirectIfProfileIsComplete` は事前チェックと書き込みが別トランザクションのため、
             // ほぼ同時に複数タブから送信された場合はここまで素通りしうる。
             // `profiles.user_id` のUNIQUE制約違反はDBが保証しており、二重登録が成立することはないため、
-            // 500にせず「既に登録済み」と同じ着地点（home）へ流す。
-            return redirect()->route('home');
+            // 500にせず「既に登録済み」と同じ着地点（下の home へのリダイレクト）へ流す。
         }
 
         return redirect()->route('home');

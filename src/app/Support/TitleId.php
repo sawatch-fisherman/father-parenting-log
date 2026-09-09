@@ -22,9 +22,9 @@ use Database\Seeders\TitleSeeder;
  * - `1`〜`3`：Count・全体合計（`care_action_id IS NULL`）
  * - `4`〜`6`：Streak・全体（`care_action_id IS NULL`）
  * - `7`〜`57`：Count・育児行動別（17行動 × 銅・銀・金）
- * - `58`〜`90`：Streak・育児行動別（毎日発生しうる11行動 × 銅・銀・金）
+ * - `58`〜`93`：Streak・育児行動別（毎日発生しうる12行動 × 銅・銀・金）
  *
- * 全体称号を先頭に置くのは、Phase 2 の称号図鑑（90件の一覧）で件数の少ない総論を先に見せるため。
+ * 全体称号を先頭に置くのは、Phase 2 の称号図鑑（93件の一覧）で件数の少ない総論を先に見せるため。
  * 図鑑は「獲得済み＋各系統の未獲得最小しきい値1件」方式なので、登録直後のユーザーが最初に見る
  * 目標が全ユーザー共通の全体称号になる（先頭が育児行動別だと、その父親の子どもの年齢によっては
  * 的外れな目標が最初に出てしまう）。
@@ -168,7 +168,7 @@ final class TitleId
 
     public const int SICK_CARE_COUNT_TIER3 = 57;
 
-    // Streak（育児行動別）— 毎日発生しうる11行動のみ。育児行動の表示順。
+    // Streak（育児行動別）— 毎日発生しうる12行動のみ。育児行動の表示順。
 
     public const int DIAPER_CHANGE_STREAK_TIER1 = 58;
 
@@ -194,45 +194,51 @@ final class TitleId
 
     public const int READ_ALOUD_STREAK_TIER3 = 69;
 
-    public const int BATH_STREAK_TIER1 = 70;
+    public const int INDOOR_PLAY_STREAK_TIER1 = 70;
 
-    public const int BATH_STREAK_TIER2 = 71;
+    public const int INDOOR_PLAY_STREAK_TIER2 = 71;
 
-    public const int BATH_STREAK_TIER3 = 72;
+    public const int INDOOR_PLAY_STREAK_TIER3 = 72;
 
-    public const int TOILET_TRAINING_STREAK_TIER1 = 73;
+    public const int BATH_STREAK_TIER1 = 73;
 
-    public const int TOILET_TRAINING_STREAK_TIER2 = 74;
+    public const int BATH_STREAK_TIER2 = 74;
 
-    public const int TOILET_TRAINING_STREAK_TIER3 = 75;
+    public const int BATH_STREAK_TIER3 = 75;
 
-    public const int PUT_TO_SLEEP_STREAK_TIER1 = 76;
+    public const int TOILET_TRAINING_STREAK_TIER1 = 76;
 
-    public const int PUT_TO_SLEEP_STREAK_TIER2 = 77;
+    public const int TOILET_TRAINING_STREAK_TIER2 = 77;
 
-    public const int PUT_TO_SLEEP_STREAK_TIER3 = 78;
+    public const int TOILET_TRAINING_STREAK_TIER3 = 78;
 
-    public const int MILK_FEEDING_STREAK_TIER1 = 79;
+    public const int PUT_TO_SLEEP_STREAK_TIER1 = 79;
 
-    public const int MILK_FEEDING_STREAK_TIER2 = 80;
+    public const int PUT_TO_SLEEP_STREAK_TIER2 = 80;
 
-    public const int MILK_FEEDING_STREAK_TIER3 = 81;
+    public const int PUT_TO_SLEEP_STREAK_TIER3 = 81;
 
-    public const int MEAL_SUPPORT_STREAK_TIER1 = 82;
+    public const int MILK_FEEDING_STREAK_TIER1 = 82;
 
-    public const int MEAL_SUPPORT_STREAK_TIER2 = 83;
+    public const int MILK_FEEDING_STREAK_TIER2 = 83;
 
-    public const int MEAL_SUPPORT_STREAK_TIER3 = 84;
+    public const int MILK_FEEDING_STREAK_TIER3 = 84;
 
-    public const int COMMUTE_ESCORT_STREAK_TIER1 = 85;
+    public const int MEAL_SUPPORT_STREAK_TIER1 = 85;
 
-    public const int COMMUTE_ESCORT_STREAK_TIER2 = 86;
+    public const int MEAL_SUPPORT_STREAK_TIER2 = 86;
 
-    public const int COMMUTE_ESCORT_STREAK_TIER3 = 87;
+    public const int MEAL_SUPPORT_STREAK_TIER3 = 87;
 
-    public const int WALK_PARK_STREAK_TIER1 = 88;
+    public const int COMMUTE_ESCORT_STREAK_TIER1 = 88;
 
-    public const int WALK_PARK_STREAK_TIER2 = 89;
+    public const int COMMUTE_ESCORT_STREAK_TIER2 = 89;
 
-    public const int WALK_PARK_STREAK_TIER3 = 90;
+    public const int COMMUTE_ESCORT_STREAK_TIER3 = 90;
+
+    public const int WALK_PARK_STREAK_TIER1 = 91;
+
+    public const int WALK_PARK_STREAK_TIER2 = 92;
+
+    public const int WALK_PARK_STREAK_TIER3 = 93;
 }

@@ -29,7 +29,7 @@ defineProps<{
 
 const { t } = useTrans();
 const { show } = useToast();
-const { secondaryButtonClass } = useButtonClasses();
+const { secondaryButtonClass, focusRing } = useButtonClasses();
 
 // S5（称号獲得モーダル）は`POST /care-logs`のレスポンス（`page.flash.titles`）を受けて
 // 自動表示する（docs/screens.md）。1回の記録で複数の称号を同時獲得しうる
@@ -225,7 +225,10 @@ function handleKeyboardActivation(event: MouseEvent, slot: Slot): void {
                     type="button"
                     :disabled="submitting"
                     :aria-label="`${slot.name}（${t('record.long_press_hint')}）`"
-                    class="group flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-surface px-2 text-center focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:bg-border"
+                    :class="[
+                        'group flex aspect-square flex-col items-center justify-center gap-1 rounded-[20px] border border-border bg-surface px-2 text-center disabled:cursor-not-allowed disabled:bg-border',
+                        focusRing,
+                    ]"
                     @pointerdown="startPress($event, slot)"
                     @pointerup="endPress($event, slot)"
                     @pointerleave="cancelPress"

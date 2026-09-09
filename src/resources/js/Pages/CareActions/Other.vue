@@ -3,6 +3,7 @@
 // 一覧の各行タップで必ずS10（実施日時指定画面）へ遷移し、即記録は行わない
 // （docs/wireframes.md S4）。単機能画面のためグローバルナビは表示しない（AppLayout未使用）。
 import { Link } from '@inertiajs/vue3';
+import { useButtonClasses } from '@/composables/useButtonClasses';
 import { useTrans } from '@/composables/useTrans';
 
 interface CareAction {
@@ -15,6 +16,7 @@ defineProps<{
 }>();
 
 const { t } = useTrans();
+const { focusRing } = useButtonClasses();
 </script>
 
 <template>
@@ -23,7 +25,7 @@ const { t } = useTrans();
         <div class="mx-auto w-full max-w-[960px] px-4 pt-6 md:px-8">
             <Link
                 href="/"
-                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="['inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary', focusRing]"
             >
                 {{ t('care_actions.back') }}
             </Link>
@@ -36,7 +38,7 @@ const { t } = useTrans();
                 <li v-for="careAction in careActions" :key="careAction.id">
                     <Link
                         :href="`/care-logs/create?care_action_id=${careAction.id}`"
-                        class="flex min-h-11 items-center justify-between py-4 text-body text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                        :class="['flex min-h-11 items-center justify-between py-4 text-body text-text-primary', focusRing]"
                     >
                         <span>{{ careAction.name }}</span>
                         <span aria-hidden="true" class="text-text-secondary">›</span>

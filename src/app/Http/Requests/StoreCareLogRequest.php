@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 /**
  * `POST /care-logs`（S3短タップ／S10保存の共通エンドポイント）のバリデーション。
  *
- * `occurred_at` はクライアントが必ず送信する運用だが（[decisions.md](decisions.md) §1.3）、
+ * `occurred_at` はクライアントが必ず送信する運用だが（[docs/decisions.md](../../../../docs/decisions.md) §1.3）、
  * 省略された場合は `CareLogController@store` 側で `now()` にフォールバックするため、
  * ここでは `nullable` として扱う（省略時は下記の範囲・重複チェックの対象外になる）。
  *

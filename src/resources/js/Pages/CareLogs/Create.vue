@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const { t } = useTrans();
 const { errorClass } = useFormFieldClasses();
-const { primaryButtonClass } = useButtonClasses();
+const { primaryButtonClass, focusRing } = useButtonClasses();
 
 // 実施日・実施時刻は個別の入力欄（<input type="date">/<input type="time">）を持つが、
 // サーバーへは結合済みの `occurred_at` として送る。`form.errors.occurred_at` を
@@ -53,7 +53,7 @@ function submit(): void {
         <div class="px-4 pt-6">
             <Link
                 href="/"
-                class="inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25"
+                :class="['inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary', focusRing]"
             >
                 {{ t('care_logs.back') }}
             </Link>
