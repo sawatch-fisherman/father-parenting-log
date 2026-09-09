@@ -175,6 +175,13 @@ class StatsController extends Controller
      * `GROUP BY`）で済ませる。育児行動ごとの累計は多い順に並べる。個人内の育児タスク種別ランキングは
      * 「比較しない」原則の例外として明示的に許容されている（CLAUDE.md「ブレさせてはいけない線引き」）。
      *
+     * 返り値の内訳：
+     * - totalCount：累計記録数（`care_logs`の総件数）
+     * - totalDays：記録した日数（`occurred_at`のユニーク日数）
+     * - monthlyCumulative：記録開始月〜今月までの月別累計実績（`monthlyCumulative()`参照）
+     * - careActionTotals：育児行動ごとの累計（多い順）
+     * - hasRecords：1件でも記録があるか（falseなら空状態を表示する）
+     *
      * @return array{totalCount: int, totalDays: int, monthlyCumulative: list<array{label: string, cumulativeTotal: int}>, careActionTotals: list<array{careActionId: int, name: string, total: int}>, hasRecords: bool}
      */
     private function buildAllTimeStats(User $user): array
@@ -226,6 +233,10 @@ class StatsController extends Controller
      * 月別件数はDBから記録のある月ぶんだけ返るため、記録の無い月は直前の累計値を持ち越して埋め、
      * 今月に記録が無くても今月ぶんまでちょうど延ばす（累計折れ線の傾き＝記録のペースを保つため、
      * 記録の空白期間を軸から欠落させない）。
+     *
+     * 返り値の内訳（配列の要素1つ＝折れ線グラフの1点＝1か月ぶん）：
+     * - label：月キー（`YYYY-MM`形式、例：`2026-07`）
+     * - cumulativeTotal：記録開始月からその月末までの累計記録数
      *
      * @return list<array{label: string, cumulativeTotal: int}>
      */
