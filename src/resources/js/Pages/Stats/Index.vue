@@ -15,6 +15,7 @@ import { useTrans } from '@/composables/useTrans';
 // Chart.jsはコアの標準機能のみで描く（docs/decisions.md §1.3）。`registerables`（全要素）は登録せず、
 // 日/週/月タブの積み上げ棒と全期間タブの折れ線が使う要素だけ登録する。凡例（Legend）は置かない
 // 仕様（DESIGN.md 5.5節）のため登録しない。
+// （内訳：CategoryScale＝X軸、LinearScale＝Y軸、BarElement＝棒、LineElement/PointElement＝折れ線と点、Tooltip＝ホバー時の吹き出し）
 Chart.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip);
 
 // Canvas内だけ別フォントになるのを防ぐ（DESIGN.md 6.1節・implementation-plan.md M7備考）。
@@ -95,6 +96,7 @@ defineOptions({
     layout: [AppLayout, { active: 'stats' }],
 });
 
+// タブの表示順と各タブの翻訳キー。
 const tabs: { key: Tab; labelKey: string }[] = [
     { key: 'day', labelKey: 'stats.tab_day' },
     { key: 'week', labelKey: 'stats.tab_week' },
@@ -114,10 +116,13 @@ function tabHref(tab: Tab): string {
     return `/stats?tab=${tab}&base_date=${props.baseDate}`;
 }
 
+// 期間送り（‹／›ボタン）の遷移先URLを組み立てる。
 function periodHref(baseDate: string): string {
     return `/stats?tab=${props.tab}&base_date=${baseDate}`;
 }
 
+// CSS変数（`--color-*`）の実際の値を取得する。Chart.jsはCanvas描画のためTailwindのクラス名では
+// 色を指定できず、実際の色コード（`#RRGGBB`等）が必要になる。
 function resolveCssVar(name: string): string {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -137,6 +142,7 @@ const rangeStartFormatter = computed(
 );
 const rangeEndFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { month: '2-digit', day: '2-digit' }));
 
+// 期間送りの間に表示する範囲表記（例：「2026/08/28 〜 09/03」）を組み立てる。
 const rangeLabel = computed((): string => {
     if (!props.period || props.period.buckets.length === 0) {
         return '';
@@ -158,12 +164,15 @@ const bucketLabelFormatter = computed(
         ),
 );
 
+// 1つのバケットの見出し（棒グラフのX軸ラベル・内訳表の列見出し）を組み立てる。
 function bucketLabel(bucket: PeriodBucket): string {
     return bucketLabelFormatter.value.format(parseIsoDate(bucket.start));
 }
 
+// 全期間タブの折れ線グラフ用の月ラベル書式（例：「2025年10月」）。
 const monthLabelFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'short' }));
 
+// 「YYYY-MM」形式の月キーを表示用ラベルに変換する。
 function monthLabel(yearMonth: string): string {
     const [year, month] = yearMonth.split('-').map(Number);
 
@@ -180,6 +189,8 @@ const bucketTotalPlugin = computed<Plugin<'bar'>>(() => ({
             return;
         }
 
+        // 先頭のデータセット（1つめの育児行動）が描画された各棒（バケットごと）の位置情報を取得する。
+        // 積み上げ棒はX座標がバケット間で共通なので、ラベルのX位置を決めるだけならどのデータセットでもよい。
         const meta = chart.getDatasetMeta(0);
         const textColor = resolveCssVar('--color-text-primary');
         const { ctx } = chart;
@@ -189,6 +200,7 @@ const bucketTotalPlugin = computed<Plugin<'bar'>>(() => ({
         ctx.font = `600 12px ${CHART_FONT_FAMILY}`;
         ctx.textAlign = 'center';
 
+        // barはバケット1つぶんの棒（インデックスがそのままバケット番号に対応）。
         meta.data.forEach((bar, index) => {
             const total = props.period?.buckets[index]?.total ?? 0;
 
@@ -196,7 +208,9 @@ const bucketTotalPlugin = computed<Plugin<'bar'>>(() => ({
                 return;
             }
 
+            // Y軸の値（件数）をCanvas上のピクセル座標に変換する（Canvasはデータ値ではなくピクセルで描画するため）。
             const y = chart.scales.y.getPixelForValue(total);
+            // bar.xは棒の中心のX座標（ピクセル）。積み上げの一番上（yの6px上）に合計値を描く。
             ctx.fillText(String(total), bar.x, y - 6);
         });
 
@@ -204,13 +218,17 @@ const bucketTotalPlugin = computed<Plugin<'bar'>>(() => ({
     },
 }));
 
+// 日/週/月タブの積み上げ棒グラフ用データ（X軸ラベル＋育児行動ごとのデータセット）を組み立てる。
 const barChartData = computed(() => {
     if (!props.period) {
         return { labels: [], datasets: [] };
     }
 
     return {
+        // X軸に並ぶ目盛ラベル（バケットの数だけ、例：「8/28」「8/29」…）。
         labels: props.period.buckets.map((bucket) => bucketLabel(bucket)),
+        // 1育児行動＝1データセット＝積み上げ棒の中の1色。`data`は各バケットでの記録件数の配列で、
+        // 積み上げ棒の縦方向の1単位（1目盛）＝記録1件を積んだ高さになる。
         datasets: props.period.series.map((series) => ({
             label: series.name,
             data: series.counts,
@@ -220,6 +238,7 @@ const barChartData = computed(() => {
     };
 });
 
+// 積み上げ棒グラフの表示設定（軸・余白・凡例の有無）。
 const barChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -227,7 +246,9 @@ const barChartOptions = {
     // 目盛最大値と一致する場合でもラベルがキャンバス上端で見切れないよう上に余白を確保する。
     layout: { padding: { top: 20 } },
     scales: {
+        // X軸（横軸＝バケット）。`stacked: true`でデータセット（育児行動）ごとの棒を横に並べず縦に積む。
         x: { stacked: true, grid: { display: false } },
+        // Y軸（縦軸＝件数）。`stacked: true`で同じX軸位置のdata値を合計した高さまで積み上げる。
         y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
     },
     plugins: {
@@ -235,6 +256,7 @@ const barChartOptions = {
     },
 };
 
+// 全期間タブの累計折れ線グラフ用データ（X軸ラベル＋月別累計のデータセット）を組み立てる。
 const lineChartData = computed(() => {
     if (!props.allTime) {
         return { labels: [], datasets: [] };
@@ -243,7 +265,10 @@ const lineChartData = computed(() => {
     const primary = resolveCssVar('--color-primary');
 
     return {
+        // X軸に並ぶ目盛ラベル（月ごと、例：「2025年10月」）。
         labels: props.allTime.monthlyCumulative.map((entry) => monthLabel(entry.label)),
+        // 折れ線は1系列のみ（積み上げ棒と違い育児行動別には分けない）。`data`は各月時点での累計件数で、
+        // 各点のY座標＝その月末までの累計記録数になる。
         datasets: [
             {
                 label: t('stats.all_time_total_count'),
@@ -257,10 +282,12 @@ const lineChartData = computed(() => {
     };
 });
 
+// 累計折れ線グラフの表示設定（Y軸・凡例の有無）。
 const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
+        // Y軸（縦軸＝累計件数）。積み上げ棒と違い`stacked`は使わない（データセットが1本のみのため）。
         y: { beginAtZero: true, ticks: { precision: 0 } },
     },
     plugins: {
