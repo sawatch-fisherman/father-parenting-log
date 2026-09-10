@@ -21,7 +21,7 @@ return [
     'back' => '戻る',
 
     // スロット入れ替えモーダル
-    'swap_modal_title' => ':name を入れ替え',
+    'swap_modal_title' => '「:name」を入れ替え',
     'swap_modal_title_empty' => '育児行動を選んで追加',
     'swap_modal_close' => '閉じる',
 ];

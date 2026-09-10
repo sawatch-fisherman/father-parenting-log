@@ -6,6 +6,7 @@ use App\Http\Requests\UpdateSlotConfigRequest;
 use App\Models\CareAction;
 use App\Models\User;
 use App\Support\PinnedSlots;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,10 +57,18 @@ class SlotConfigController extends Controller
         /** @var list<array{slot_position: int, care_action_id: int}> $slots */
         $slots = $request->validated('slots');
 
-        DB::transaction(function () use ($slots, $user): void {
-            $user->userSlotConfigs()->delete();
-            $user->userSlotConfigs()->createMany($slots);
-        });
+        try {
+            DB::transaction(function () use ($slots, $user): void {
+                $user->userSlotConfigs()->delete();
+                $user->userSlotConfigs()->createMany($slots);
+            });
+        } catch (UniqueConstraintViolationException) {
+            // 複数タブからほぼ同時に保存すると、delete-insertの2トランザクションが競合し
+            // `UNIQUE(user_id, care_action_id)`に触れうる。先に確定した方のピン留めが残っており
+            // 「ピン留めを更新する」という利用者の意図はいずれにせよ達成されているため、
+            // 500にせず通常の保存完了と同じ着地点へ流す（`ProfileController@store`の
+            // 同種の競合吸収と同じ方針）。
+        }
 
         Inertia::flash('success', __('settings.slots_updated'));
 

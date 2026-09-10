@@ -36,7 +36,9 @@ useModalFocus(dialogRef, () => emit('close'));
 
 <template>
     <!-- DESIGN.md 10章：オーバーレイrgba(51,48,44,0.5)＋中央配置。コンテンツは角丸16px・Level 2の影 -->
-    <div class="fixed inset-0 z-30 flex items-center justify-center bg-overlay p-4">
+    <!-- 一覧外（オーバーレイ）タップでもキャンセルできる（docs/wireframes.md S9「スロット入れ替えモーダル」）。
+         `.self`はダイアログ本体のクリックがこのハンドラまで伝播して閉じてしまうのを防ぐ。 -->
+    <div class="fixed inset-0 z-30 flex items-center justify-center bg-overlay p-4" @click.self="emit('close')">
         <div
             ref="dialogRef"
             role="dialog"

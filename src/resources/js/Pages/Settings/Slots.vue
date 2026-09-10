@@ -66,6 +66,11 @@ const form = useForm<{ slots: { slot_position: number; care_action_id: number }[
     slots: [],
 });
 
+// バリデーションエラーはネスト配列のキー（`slots`／`slots.0.care_action_id`等）になり、
+// S8・S11のように特定の入力欄へ添えられる形にならないため、先頭の1件をバナーで示す
+// （`Pages/Record/Index.vue`のインラインエラーと同じ理由。DESIGN.md 11章 Error）。
+const errorMessage = computed<string | null>(() => Object.values(form.errors)[0] ?? null);
+
 function submit(): void {
     form.slots = slots.value
         .map((slot, index) => (slot ? { slot_position: index + 1, care_action_id: slot.careActionId } : null))
@@ -89,6 +94,15 @@ function submit(): void {
         <div class="mx-auto w-full max-w-[960px] px-4 pb-10 md:px-8">
             <h1 class="mb-2 text-heading-l font-bold">{{ t('settings.slots_title') }}</h1>
             <p class="mb-4 text-body-sm text-text-secondary">{{ t('settings.slots_hint') }}</p>
+
+            <div
+                v-if="errorMessage"
+                role="alert"
+                class="mb-4 flex items-center gap-2 rounded-md border border-error bg-surface px-4 py-3 text-body-sm text-error"
+            >
+                <span aria-hidden="true">⚠️</span>
+                <span>{{ errorMessage }}</span>
+            </div>
 
             <!-- グリッドは4列×2段固定（S3と同じ組み立て。docs/wireframes.md S9） -->
             <div class="grid grid-cols-4 gap-2">

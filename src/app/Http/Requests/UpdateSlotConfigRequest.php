@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\CareAction;
 use App\Models\User;
+use App\Support\PinnedSlots;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -34,8 +35,8 @@ class UpdateSlotConfigRequest extends FormRequest
         return [
             // `array`キー自体は必須だが、8個未満（0個を含む）の保存も通すため`required`ではなく
             // `present`にする（`required`は空配列を「未入力」として弾いてしまうため）。
-            'slots' => ['present', 'array', 'max:8'],
-            'slots.*.slot_position' => ['required', 'integer', 'between:1,8', 'distinct'],
+            'slots' => ['present', 'array', 'max:'.PinnedSlots::MAX_SLOTS],
+            'slots.*.slot_position' => ['required', 'integer', 'between:1,'.PinnedSlots::MAX_SLOTS, 'distinct'],
             'slots.*.care_action_id' => [
                 'required',
                 'integer',

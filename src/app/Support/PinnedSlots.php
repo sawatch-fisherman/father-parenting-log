@@ -13,7 +13,14 @@ use App\Models\User;
 final class PinnedSlots
 {
     /**
-     * 指定ユーザーのピン留めを `slot_position` 順の8要素配列で返す。
+     * ピン留めの最大枠数（`slot_position` の上限）。`UpdateSlotConfigRequest` の
+     * `max`／`between` ルールもここを参照し、枠数を変える判断をした際に片方だけ
+     * 直して食い違う余地を無くす（`CareLogWindow::backdateFloor()`と同じ理由）。
+     */
+    public const int MAX_SLOTS = 8;
+
+    /**
+     * 指定ユーザーのピン留めを `slot_position` 順の{@see self::MAX_SLOTS}要素配列で返す。
      *
      * @return array<int, array{careActionId: int, name: string|null}|null>
      */
@@ -25,7 +32,7 @@ final class PinnedSlots
             ->get()
             ->keyBy('slot_position');
 
-        return collect(range(1, 8))
+        return collect(range(1, self::MAX_SLOTS))
             ->map(function (int $position) use ($slotConfigsByPosition): ?array {
                 $slotConfig = $slotConfigsByPosition->get($position);
 
