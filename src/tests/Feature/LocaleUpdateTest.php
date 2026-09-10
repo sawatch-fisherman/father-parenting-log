@@ -41,6 +41,9 @@ class LocaleUpdateTest extends TestCase
 
     /**
      * 対応していないロケールの指定はバリデーションで弾かれ、Cookieも発行されないことを検証する。
+     *
+     * エラー文言まで固定するのは、`Rule::in` に対応する `validation.in` が `lang/ja` に無いと、
+     * 翻訳キー（`validation.in`）が日本語化されないまま画面に出てしまうため。
      */
     public function test_rejects_unsupported_locale_without_touching_the_cookie(): void
     {
@@ -48,7 +51,7 @@ class LocaleUpdateTest extends TestCase
         $response = $this->post('/locale', ['locale' => 'fr']);
 
         // Assert
-        $response->assertSessionHasErrors('locale');
+        $response->assertSessionHasErrors(['locale' => '選択された表示言語は無効です。']);
         $response->assertCookieMissing('locale');
     }
 

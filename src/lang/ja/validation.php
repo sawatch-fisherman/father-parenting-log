@@ -11,8 +11,12 @@ return [
         'string' => ':attributeは:max文字以内で入力してください。',
     ],
     'enum' => '選択された:attributeは無効です。',
+    // `LocaleController@update` の `Rule::in(config('totoops.supported_locales'))` 用。
+    // 定義しないと、対応外のロケールを送られたときに翻訳キー（`validation.in`）がそのまま画面に出る。
+    'in' => '選択された:attributeは無効です。',
 
-    // `StoreCareLogRequest`（M4）が `messages()` で `occurred_at.*` に個別に割り当てる。
+    // `Concerns\ValidatesOccurredAt`（`StoreCareLogRequest`・`UpdateCareLogRequest` が併用）が
+    // `messages()` 経由で `occurred_at.*` に個別に割り当てる。
     // 汎用の `:date` テンプレートではなく利用者向けの分かりやすい文言にするため専用キーにしている。
     // `:days` は `config('totoops.care_log.backdate_days')` を渡す（`CareLogWindow`同様、
     // 遡り日数のハードコードを避けて設定値と二重管理にならないようにするため）。

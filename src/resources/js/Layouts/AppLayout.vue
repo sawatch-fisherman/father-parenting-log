@@ -35,7 +35,7 @@ const navItems = computed(() => [
 <template>
     <div class="min-h-screen bg-background text-text-primary md:flex">
         <!-- デスクトップ：左サイドバー（DESIGN.md 10章 Navigation。幅220px・右端border） -->
-        <nav aria-label="グローバルナビゲーション" class="hidden shrink-0 border-r border-border bg-surface px-4 py-8 md:block md:w-55">
+        <nav :aria-label="t('nav.landmark')" class="hidden shrink-0 border-r border-border bg-surface px-4 py-8 md:block md:w-55">
             <ul class="space-y-1">
                 <li v-for="item in navItems" :key="item.key">
                     <Link
@@ -61,7 +61,7 @@ const navItems = computed(() => [
         </main>
 
         <!-- モバイル：下部固定タブバー（DESIGN.md 10章 Navigation。高さ56px・上端border・Level2影） -->
-        <nav aria-label="グローバルナビゲーション" class="fixed inset-x-0 bottom-0 z-10 flex h-14 border-t border-border bg-surface shadow-level-2 md:hidden">
+        <nav :aria-label="t('nav.landmark')" class="fixed inset-x-0 bottom-0 z-10 flex h-14 border-t border-border bg-surface shadow-level-2 md:hidden">
             <Link
                 v-for="item in navItems"
                 :key="item.key"
