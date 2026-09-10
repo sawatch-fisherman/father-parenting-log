@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\User;
+
+/**
+ * ピン留め済みの育児行動を `slot_position`（1〜8）順の配列に組み立てる。
+ *
+ * S3（記録画面）・S9（ピン留め設定画面）の両方が同じ「行が無い位置は空きスロット（`null`）」
+ * という組み立てを必要とするため、個別に書かず集約する（`data-model.md` ⑤）。
+ */
+final class PinnedSlots
+{
+    /**
+     * 指定ユーザーのピン留めを `slot_position` 順の8要素配列で返す。
+     *
+     * @return array<int, array{careActionId: int, name: string|null}|null>
+     */
+    public static function forUser(User $user): array
+    {
+        $slotConfigsByPosition = $user->userSlotConfigs()
+            ->with('careAction')
+            ->orderBy('slot_position')
+            ->get()
+            ->keyBy('slot_position');
+
+        return collect(range(1, 8))
+            ->map(function (int $position) use ($slotConfigsByPosition): ?array {
+                $slotConfig = $slotConfigsByPosition->get($position);
+
+                if ($slotConfig === null) {
+                    return null;
+                }
+
+                return [
+                    'careActionId' => $slotConfig->care_action_id,
+                    'name' => $slotConfig->careAction?->name,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+}

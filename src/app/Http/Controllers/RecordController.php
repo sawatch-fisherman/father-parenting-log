@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PinnedSlots;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,29 +25,8 @@ class RecordController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $slotConfigsByPosition = $user->userSlotConfigs()
-            ->with('careAction')
-            ->orderBy('slot_position')
-            ->get()
-            ->keyBy('slot_position');
-
-        $slots = collect(range(1, 8))
-            ->map(function (int $position) use ($slotConfigsByPosition): ?array {
-                $slotConfig = $slotConfigsByPosition->get($position);
-
-                if ($slotConfig === null) {
-                    return null;
-                }
-
-                return [
-                    'careActionId' => $slotConfig->care_action_id,
-                    'name' => $slotConfig->careAction?->name,
-                ];
-            })
-            ->all();
-
         return Inertia::render('Record/Index', [
-            'slots' => $slots,
+            'slots' => PinnedSlots::forUser($user),
         ]);
     }
 }

@@ -39,13 +39,9 @@ function submit(): void {
 <template>
     <div class="flex min-h-screen flex-col bg-background text-text-primary">
         <div class="px-4 pt-6">
-            <!--
-              settings.index（S7）はM8で実装予定のため、それまでの暫定リンク先として home へ戻す。
-              SPA内遷移のため <Link> を使う（生の <a> だとフルページリロードになる）。
-            -->
             <!-- 補助的な操作なので Secondary の文字色を使う（DESIGN.md 5.2「控えめなラベル」） -->
             <Link
-                href="/"
+                href="/settings"
                 :class="['inline-flex min-h-11 items-center text-body-sm text-secondary hover:text-text-primary', focusRing]"
             >
                 {{ t('profile.back') }}
