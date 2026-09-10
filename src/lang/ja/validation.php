@@ -9,7 +9,16 @@ return [
     'exists' => '選択された:attributeは無効です。',
     'max' => [
         'string' => ':attributeは:max文字以内で入力してください。',
+        // `UpdateSlotConfigRequest`の`slots`（ピン留めは最大8個）用。
+        'array' => ':attributeは:max個以内にしてください。',
     ],
+    'between' => [
+        // `UpdateSlotConfigRequest`の`slots.*.slot_position`（1〜8）用。
+        'numeric' => ':attributeは:min〜:maxの範囲で入力してください。',
+    ],
+    // `UpdateSlotConfigRequest`の`slots.*.slot_position`／`slots.*.care_action_id`
+    // （重複禁止）用。
+    'distinct' => ':attributeが重複しています。',
     'enum' => '選択された:attributeは無効です。',
     // `LocaleController@update` の `Rule::in(config('totoops.supported_locales'))` 用。
     // 定義しないと、対応外のロケールを送られたときに翻訳キー（`validation.in`）がそのまま画面に出る。
@@ -34,5 +43,8 @@ return [
         'care_action_id' => '育児行動',
         'occurred_at' => '実施日時',
         'memo' => 'メモ',
+        'slots' => 'ピン留め',
+        'slots.*.slot_position' => 'スロット位置',
+        'slots.*.care_action_id' => '育児行動',
     ],
 ];

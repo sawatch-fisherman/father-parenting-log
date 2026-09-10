@@ -8,11 +8,12 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SlotConfigController;
 use App\Http\Controllers\StatsController;
 use App\Http\Middleware\EnsureProfileIsComplete;
 use App\Http\Middleware\RedirectIfProfileIsComplete;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -43,8 +44,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
         Route::patch('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');
 
-        // M8 の SettingsController@index に置き換わる暫定プレースホルダ
-        Route::get('/settings', fn () => Inertia::render('Settings/Index'))->name('settings.index');
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+
+        Route::get('/settings/slots', [SlotConfigController::class, 'edit'])->name('settings.slots.edit');
+        Route::put('/settings/slots', [SlotConfigController::class, 'update'])->name('settings.slots.update');
 
         Route::get('/stats', [StatsController::class, 'index'])->name('stats.index');
     });

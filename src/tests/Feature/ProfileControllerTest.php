@@ -129,7 +129,7 @@ class ProfileControllerTest extends TestCase
         ]);
 
         // Assert
-        $response->assertRedirect(route('settings.profile.edit'));
+        $response->assertRedirect(route('settings.index'));
         $this->assertDatabaseHas('profiles', [
             'user_id' => $user->id,
             'nickname' => '新ニックネーム',

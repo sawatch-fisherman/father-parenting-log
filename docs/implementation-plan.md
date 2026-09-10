@@ -225,14 +225,15 @@ flowchart TD
 - **依存**：M2, M3
 - **対応画面/機能**：S7（設定ハブ）・S9（ピン留め設定）／[features.md](features.md)「設定画面（ハブ）」「育児行動管理（常時8アイコン）」／[screens.md](screens.md) `settings.index`・`settings.slots.edit`・`settings.slots.update`
 - **タスク**：
-  - [ ] `SettingsController@index`（`GET /settings`＝S7ハブ。プロフィール編集・ピン留め設定・ログアウトへの入口。全体集計導線は置かない＝[decisions.md](decisions.md) §1.3）
-  - [ ] `SlotConfigController`（`edit`＝S9 / `update`）、`UpdateSlotConfigRequest`（**8個以下**・重複不可・許可された育児行動のみ・`slot_position` 1〜8。Policy 不要＝自分にスコープ）。**`update` は delete-insert 方式**：バリデーション通過後、対象ユーザーの既存行を全削除→送信された行（最大8行）を挿入を1トランザクションで実行する（1行ずつUPDATEすると入れ替え途中で`UNIQUE(user_id, care_action_id)`に触れうるため。[decisions.md](decisions.md) §1.3）
+  - [x] `SettingsController@index`（`GET /settings`＝S7ハブ。プロフィール編集・ピン留め設定・ログアウトへの入口。全体集計導線は置かない＝[decisions.md](decisions.md) §1.3）
+  - [x] `SlotConfigController`（`edit`＝S9 / `update`）、`UpdateSlotConfigRequest`（**8個以下**・重複不可・許可された育児行動のみ・`slot_position` 1〜8。Policy 不要＝自分にスコープ）。**`update` は delete-insert 方式**：バリデーション通過後、対象ユーザーの既存行を全削除→送信された行（最大8行）を挿入を1トランザクションで実行する（1行ずつUPDATEすると入れ替え途中で`UNIQUE(user_id, care_action_id)`に触れうるため。[decisions.md](decisions.md) §1.3）
     - **行数の不変条件は「最大8個」**：MVP の範囲では常に8行だが、Phase 2 のカスタム育児行動削除で7行以下になりうるため、`edit`／`update`／S3 の描画のいずれも「8行前提」で書かない（[decisions.md](decisions.md) §1.3、[data-model.md](data-model.md) ⑤）
-  - [ ] Vue：`Pages/Settings/Index.vue`（S7）、`Pages/Settings/Slots.vue`（S9）
-  - [ ] **S7 に `JA|EN` 言語切り替え項目**（M0 の `POST /locale` を叩く。S1 と並ぶ言語切り替えの2箇所目。[decisions.md](decisions.md) §1.3）
-  - [ ] カスタム育児行動管理（S14）・卒業・広告は Phase 2+ の“器”として導線プレースホルダのみ（[screens.md](screens.md) S7・S14）
+  - [x] Vue：`Pages/Settings/Index.vue`（S7）、`Pages/Settings/Slots.vue`（S9）
+  - [x] **S7 に `JA|EN` 言語切り替え項目**（M0 の `POST /locale` を叩く。S1 と並ぶ言語切り替えの2箇所目。[decisions.md](decisions.md) §1.3）
+  - [x] カスタム育児行動管理（S14）・卒業・広告は Phase 2+ の“器”として導線プレースホルダのみ（[screens.md](screens.md) S7・S14）
 - **テスト観点**：ピン留め入れ替え（delete-insert）で一意制約違反にならない、育児行動の重複拒否、許可外の育児行動の拒否、8個未満での保存が通る／9個以上は拒否、ログアウト、言語切り替えで cookie が変わる。
 - **完了条件**：DoD ＋ ピン留めを変更すると S3 の8アイコンに反映される。
+- **備考**：計画に無い追加が2点ある。①「slot_position（1〜8）→育児行動」の組み立て（行が無い位置はnull）はS3実装時点で`RecordController@index`が既に持っていたロジックと完全に一致するため、`App\Support\PinnedSlots::forUser()`へ切り出して両Controllerで共有した（`CareLogWindow`と同じ理由：個別に書くと片方だけ直して食い違う）。②S8（プロフィール編集）の保存後リダイレクト先を、M2時点の暫定値（`settings.profile.edit`）からS7（`settings.index`）へ更新した（`docs/wireframes.md`「保存でS7へ戻る」の仕様どおり。M2時点ではS7が未実装だったための暫定対応だった）。
 
 ---
 
