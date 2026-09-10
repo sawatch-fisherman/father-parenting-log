@@ -17,7 +17,7 @@ use Illuminate\Database\Seeder;
  * `docs/features.md`のカテゴリ（日常ケア／食事系／外出・移動／対応・耐久）順に並べているため、
  * `id`の昇順とは一致しない。`id`は永続化された主キーなので並び替えても変更しないこと。
  *
- * @see docs/features.md「育児行動一覧（基本8個の選定候補プール）」
+ * @see docs/features.md「育児行動一覧（常時8アイコンのピン留め候補プール）」
  * @see docs/data-model.md ③ `care_actions`
  */
 class CareActionSeeder extends Seeder

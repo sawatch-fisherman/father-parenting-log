@@ -2,7 +2,7 @@
 
 > TotoOps（開発名。前身 DadOps）のビジュアルデザイン指針。`docs/concept.md`・`docs/features.md`・`docs/screens.md`・`docs/wireframes.md`・`docs/data-model.md`・`docs/privacy.md`・CLAUDE.md の内容と矛盾しないことを前提に、独自に設計したもの。
 > 複数の公開デザイン資料から一般化した原則は `.claude/references/design/notes/extracted-design-principles.md` を参照。本書は、それらの原則と本プロジェクトの要件を踏まえて策定した**TotoOps専用のデザイン方針**である。
-> 本書は「これから作る」ための設計図であり、既存実装を追認したものではない。M1〜M4 で実装した画面（S1ログイン／S2プロフィール登録／S8プロフィール編集／S3記録／S4その他の育児行動／S10実施日時指定）と、グローバルナビ・トーストには本書の色・タイポグラフィ・コンポーネント仕様を適用済み。M5 で S5（称号解除モーダル。X投稿文の生成を内包）にも適用済み。履歴（S13）・集計（S12）・設定（S7）はナビから遷移できる骨組みのみで中身は未実装。
+> 本書は「これから作る」ための設計図であり、既存実装を追認したものではない。M1〜M7 で実装した画面（S1ログイン／S2プロフィール登録／S8プロフィール編集／S3記録／S4その他の育児行動／S10実施日時指定／S5称号解除モーダル（X投稿文の生成を内包）／S11ログ編集・削除確認モーダル／S13履歴／S12集計）と、グローバルナビ・トーストには本書の色・タイポグラフィ・コンポーネント仕様を適用済み。設定（S7）はナビから遷移できる骨組みのみで、中身は M8 で実装する。
 
 ---
 
@@ -153,12 +153,15 @@ S12（期間別集計画面）の積み上げ棒グラフで、育児行動ご�
 単一フォントファミリー「Noto Sans JP」＋システムフォールバックのみを採用する。
 
 ```css
---font-sans: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif;
+--font-sans: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 ```
+
+末尾の絵文字フォント4つは、13章のとおり育児行動アイコン・状態アイコン（🏅・✓・ℹ️・＋等）を絵文字で表現するため必要になる。`sans-serif` より後ろに置くので、和文・欧文の見え方には影響しない。
 
 `src/resources/css/app.css` の `@theme` に反映済み（`--font-sans`）。Webフォント本体は Bunny Fonts 経由で `src/resources/views/app.blade.php` が読み込む（Google Fonts と同一の資産を、IPアドレスを記録しないCDNで配信するサービス。`docs/privacy.md` の「個人情報は最小限に」の方針に沿うため直の Google Fonts は使わない）。
 
-和文と欧文で別フォントを使う、あるいは同じフォントの複数ウェイトを別ファイルとして読み込む、といった構成は採用しない。フォントは1系統・Google Fontsで無償配信されているもの1つに絞ることで、ライセンス費用・読み込みコストの両方を最小化する。ウェイトはTailwind標準の3段階（400 / 500 / 700）のみを使い、4章の「フラットで素直な組版」という方向性を支える。
+和文と欧文で別フォントを使う、あるいは同じフォントの複数ウェイトを別ファイルとして読み込む、といった構成は採用しない。フォントは1系統・Google Fontsで無償配信されているもの1つに絞ることで、ライセンス費用・読み込みコストの両方を最小化する。ウェイトはTailwind標準の3段階（400 / 600 / 700）のみを使い、4章の「フラットで素直な組版」という方向性を支える（6.2節の階層表と一致。Webフォントも `src/resources/views/app.blade.php` でこの3ウェイトだけを読み込む）。
 
 ### 6.2 サイズ・行間・ウェイトの階層
 
@@ -185,7 +188,7 @@ S12（期間別集計画面）の積み上げ棒グラフで、育児行動ご�
 overflow-wrap: break-word;
 ```
 
-称号名や育児イベント名など日本語と絵文字・英数字が混在する短い文字列があるため、長い連続文字列でもレイアウトが崩れないよう `overflow-wrap: break-word` を基本設定とする。特別な禁則処理はブラウザデフォルトに委ねる。
+称号名や育児行動名など日本語と絵文字・英数字が混在する短い文字列があるため、長い連続文字列でもレイアウトが崩れないよう `overflow-wrap: break-word` を基本設定とする。特別な禁則処理はブラウザデフォルトに委ねる。
 
 ## 7. Spacing System
 
@@ -267,7 +270,7 @@ overflow-wrap: break-word;
 - 入力欄：背景 `#FFFFFF`、枠線 1px solid `#DEDAD3`、角丸6px、内側パディング 12px 16px、フォントサイズ16px（モバイルでの自動ズームを避けるため16px未満にしない）。
 - フォーカス時：枠線を `#378028` に変え、さらに外側に `0 0 0 3px rgba(55,128,40,0.25)` のフォーカスリングを表示する（12章）。
 - ラベルは入力欄の上に常設表示し、プレースホルダーだけに頼らない（プレースホルダーは消えると入力内容が何だったか分からなくなるため補助情報に留める）。
-- 任意項目（年代・子の年齢層など）には必ず「未回答」を選べる選択肢を用意し、回答を事実上強制しない（`docs/privacy.md` 準拠）。
+- 任意項目（年代・子どもの年齢帯など）には必ず「未回答」を選べる選択肢を用意し、回答を事実上強制しない（`docs/privacy.md` 準拠）。
 
 ### Cards
 
@@ -349,9 +352,9 @@ overflow-wrap: break-word;
 
 現状、アイコン・UIコンポーネントライブラリは未導入（`src/package.json` にも含まれていない）。以下を新規導入する方針とする。
 
-- **育児イベント種別アイコン（17種、8タイルグリッド用）**：絵文字ベースを採用する。`docs/wireframes.md` の称号解除モーダル（S5）で既に🏅絵文字が使われている前例に合わせ、追加のライセンス・デザイン工数なしで温かみのある表現ができるため。
+- **育児行動アイコン（17種、8タイルグリッド用）**：絵文字ベースを採用する。`docs/wireframes.md` の称号解除モーダル（S5）で既に🏅絵文字が使われている前例に合わせ、追加のライセンス・デザイン工数なしで温かみのある表現ができるため。
   - **データソースは未確定**（`care_actions` テーブルには `id`／`user_id`／`name`／`sort_order` しか無く、絵文字を持たない）。`care_actions` に列を足すか、`App\Support\CareActionId` 定数からフロント側でマッピングするかは未決定。決着するまでは8タイルグリッド（S3/S9）はラベル（`name`）のみで表示する（M3で採用。[implementation-plan.md](docs/implementation-plan.md)「M3 記録の骨格＋グローバルナビ」）。
-- **UIクロム（ナビ・矢印・ケバブメニュー・チェックマーク等）**：Heroicons（MITライセンス）を採用する。Tailwind CSSエコシステムでの採用実績が多く、線幅・サイズの一貫性が保たれているため。**ただしMVP（M1〜M6実装分）では未導入**（`src/package.json` に `@heroicons/vue` を追加していない）で、`›`・`…`・`✓`・`ℹ️` 等のテキスト・絵文字文字で代替している（例：S13のケバブメニュー`src/resources/js/Pages/History/Index.vue`、S4のシェブロン`src/resources/js/Pages/CareActions/Other.vue`、トーストの`src/resources/js/Components/ToastHost.vue`）。Heroicons導入は後続タスクとする。導入する際は上記のテキスト表現をまとめて置き換える。
+- **UIクロム（ナビ・矢印・ケバブメニュー・チェックマーク等）**：Heroicons（MITライセンス）を採用する。Tailwind CSSエコシステムでの採用実績が多く、線幅・サイズの一貫性が保たれているため。**ただしMVP（M1〜M7実装分）では未導入**（`src/package.json` に `@heroicons/vue` を追加していない）で、`›`・`…`・`✓`・`ℹ️` 等のテキスト・絵文字文字で代替している（例：S13のケバブメニュー`src/resources/js/Pages/History/Index.vue`、S4のシェブロン`src/resources/js/Pages/CareActions/Other.vue`、トーストの`src/resources/js/Components/ToastHost.vue`）。Heroicons導入は後続タスクとする。導入する際は上記のテキスト表現をまとめて置き換える。
 - **写真・人物画像**：`docs/privacy.md` により子どもの写真は取得しないため、装飾目的の人物写真・ストックフォトは使用しない。イラストを使う場合も、特定の人種・体型・家族構成を暗示しない、抽象度の高い表現に留める。
 
 > この2点（絵文字＋Heroicons）はDESIGN.md作成時点での設計判断であり、`docs/decisions.md` に別途明記された既存の決定と矛盾しないか、実装着手前に確認が必要（16章参照）。

@@ -320,8 +320,8 @@ class StatsControllerTest extends TestCase
      * 返ることを検証する。
      *
      * `Carbon::subMonths()`は既定でオーバーフローするため、「日を保持したまま月を引いてから
-     * 月初へ丸める」実装だと基準日が月末のときにバケットが重複・欠落する（PRレビュー指摘：
-     * `base_date=2024-03-31`で2023-11月・2024-02月が消え、10月・3月が2列ずつ並ぶ）。
+     * 月初へ丸める」実装だと基準日が月末のときにバケットが重複・欠落する
+     * （`base_date=2024-03-31`で2023-11月・2024-02月が消え、10月・3月が2列ずつ並ぶ）。
      * 消えるはずだった2月の記録が正しいバケットに入ることまであわせて固定する。
      */
     public function test_month_tab_buckets_do_not_overflow_when_base_date_is_a_month_end_day(): void
@@ -429,7 +429,7 @@ class StatsControllerTest extends TestCase
      * クエリパラメータが配列で送られても（`?tab[]=day`）500にならず既定値へフォールバックすることを検証する。
      *
      * `Request::query()`は配列入力をそのまま返すため、`?string`型のみを想定した受け側に直接渡すと
-     * `TypeError`になる（PRレビュー指摘）。
+     * `TypeError`になる。
      */
     public function test_array_query_parameters_fall_back_to_defaults_instead_of_erroring(): void
     {

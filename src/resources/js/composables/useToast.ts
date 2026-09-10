@@ -7,9 +7,13 @@ import { readonly, ref } from 'vue';
  * スコープに置いているのはそのためで、どのページ・どの深さのコンポーネントから `show()` を
  * 呼んでも同じ1件の表示枠に流れ込む。
  *
- * 投入経路は2つ。サーバー flash（`HandleInertiaRequests::share()` の `flash.success`）を
+ * 投入経路は2つ。サーバー flash（`Inertia::flash()` が乗せる `page.flash.success`）を
  * `ToastHost` が watch して `show()` する経路（保存成功）と、ページから直接 `show()` を呼ぶ
- * 経路（S13の「7日を過ぎた記録は変更できません」など、サーバー往復を伴わない通知）。
+ * 経路（S13の「:days日を過ぎた記録は変更できません」など、サーバー往復を伴わない通知）。
+ *
+ * `success` を通常の共有props（`HandleInertiaRequests::share()`）に乗せないのは、通常の props が
+ * ブラウザの history state にキャッシュされ、ブラウザバックで古いメッセージが再表示されるため
+ * （`ToastHost.vue`・`HandleInertiaRequests` 参照）。
  *
  * @see DESIGN.md 10章「Dialogs and Notifications」・11章「Success」
  */
