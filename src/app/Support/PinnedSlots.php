@@ -27,9 +27,9 @@ final class PinnedSlots
     public static function forUser(User $user): array
     {
         $slotConfigsByPosition = $user->userSlotConfigs()
-            ->with('careAction')
+            ->with('careAction:id,name')
             ->orderBy('slot_position')
-            ->get()
+            ->get(['slot_position', 'care_action_id'])
             ->keyBy('slot_position');
 
         return collect(range(1, self::MAX_SLOTS))
