@@ -100,8 +100,7 @@ class ProfileController extends Controller
         $profile = $user->profile()->firstOrFail();
         $profile->update($request->validated());
 
-        // M8で settings.index（S7）ができるまでの暫定リダイレクト先。
-        return redirect()->route('settings.profile.edit');
+        return redirect()->route('settings.index');
     }
 
     /**

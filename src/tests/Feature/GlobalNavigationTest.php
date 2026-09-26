@@ -10,8 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * グローバルナビの4遷移先（記録/履歴/集計/設定）が、実装済みのものは本実装、
- * 未実装のものはM3時点のプレースホルダとして到達可能であることを検証する。
+ * グローバルナビの4遷移先（記録/履歴/集計/設定）が、いずれも本実装として到達可能であることを検証する。
  *
  * @see docs/implementation-plan.md「M3 記録の骨格＋グローバルナビ（S3, 共通ナビ）」
  */

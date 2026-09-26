@@ -21,7 +21,7 @@ const { t } = useTrans();
 // フォーカスリング（DESIGN.md 11章 Focus）。値は `useButtonClasses` に集約されている。
 const { focusRing } = useButtonClasses();
 
-// computed にしているのは、S7（設定画面）にロケール切替トグルが置かれるM8以降、
+// computed にしているのは、S7（設定画面）にロケール切替トグルが置かれているため、
 // ロケール変更後もこのレイアウトが再マウントされずラベルだけ古い言語のまま残ることを防ぐため
 // （永続レイアウトのためインスタンスがページ遷移をまたいで維持される＝script setup直下の評価は1回きり）。
 const navItems = computed(() => [
