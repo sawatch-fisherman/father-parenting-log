@@ -34,10 +34,11 @@
     --color-text-primary: #33302c;
     --color-text-secondary: #6e6a64;
     --color-border: #dedad3;
-    --color-success: #2f6690;
+    /* Success と Info は明るい塗りのため、上に載せる文字は白ではなく text-text-primary（DESIGN.md 5.1節の3・5.3節） */
+    --color-success: #07bc0c;
     --color-warning: #b4791e;
     --color-error: #b3435a;
-    --color-info: #567893;
+    --color-info: #5aa5e2;
 
     /* 10章 Dialogs and Notifications（モーダルの半透明オーバーレイ。5.2の14トークンには含まれない
        コンポーネント専用値だが、DESIGN.mdが具体値を明示しているためHEX直書きを避けトークン化する） */
