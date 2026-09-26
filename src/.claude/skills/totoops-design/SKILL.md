@@ -74,9 +74,9 @@ HEX 値はここに書かない（`DESIGN.md` 5.2節・6.2節が正。二重管�
 | 区切り線・枠 | `border-border` |
 | 状態色 | `bg-success` / `bg-warning` / `text-error`・`border-error` / `bg-info` |
 
-**緑は `primary` 1トークンだけ。** Primary（`#378028`）は**塗りの下地と文字色の両方**で使えるよう明度を決めてある（`DESIGN.md` 5.1節の原則2・5.3節）。塗りの上に乗せる文字は `text-white`、白背景に置く緑の文字・アイコン・枠線は `text-primary` / `border-primary`。**Primaryを暗く落とした濃色版（`primary-deep` のようなトークン）は `DESIGN.md` 5.1節が明示的に不採用としている**ので、新設しないこと。`bg-primary-hover` はホバー・押下時専用で、静的な文字色には使わない。
+**ブランド・操作系の緑は `primary` 1トークンだけ**（`bg-success` もあるが、トーストの塗り専用の状態色で、ボタン・リンク・選択状態などには使わない。`DESIGN.md` 5.1節の3）。Primary（`#378028`）は**塗りの下地と文字色の両方**で使えるよう明度を決めてある（`DESIGN.md` 5.1節の原則2・5.3節）。塗りの上に乗せる文字は `text-white`、白背景に置く緑の文字・アイコン・枠線は `text-primary` / `border-primary`。**Primaryを暗く落とした濃色版（`primary-deep` のようなトークン）は `DESIGN.md` 5.1節が明示的に不採用としている**ので、新設しないこと。`bg-primary-hover` はホバー・押下時専用で、静的な文字色には使わない。
 
-状態色（Success/Warning/Error/Info）も白文字での使用を前提にした明度で設計されている（5.3節）ため、塗りの上は `text-white` でよい。
+状態色のうち Warning/Error は白文字での使用を前提にした明度で設計されている（5.3節）ため、塗りの上は `text-white` でよい。**Success/Info は明るい塗り（トースト用）なので、`bg-success`・`bg-info` の上は `text-text-primary`** にする（5.1節の3・5.3節・10章）。
 
 ### タイポグラフィ
 

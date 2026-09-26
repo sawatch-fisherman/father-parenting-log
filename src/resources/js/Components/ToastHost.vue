@@ -19,7 +19,8 @@ const page = usePage();
 const { current, show } = useToast();
 
 // 状態を色だけで伝えない（DESIGN.md 12章）。塗りの色とアイコンを必ず対で切り替える。
-// 状態色はいずれも白文字での使用を前提にした明度で設計されている（DESIGN.md 5.3節）。
+// トーストの塗りはどの種類も明るいトーンに揃えてあり、文字は Text Primary で統一する
+// （主要ボタンの「濃い塗り＋白文字」と明暗を逆にして取り違えを防ぐ。DESIGN.md 10章・5.3節）。
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
     success: 'bg-success',
     info: 'bg-info',
@@ -92,7 +93,7 @@ watch(
                 v-if="current"
                 :key="current.id"
                 :class="[
-                    'pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-white shadow-level-2',
+                    'pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3 text-body-sm text-text-primary shadow-level-2',
                     VARIANT_CLASSES[variant],
                 ]"
             >
